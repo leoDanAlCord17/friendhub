@@ -1,0 +1,92 @@
+{
+  "name": "friendhub",
+  "displayName": "FriendHub",
+  "description": "Conecta con otros desarrolladores desde el panel inferior de VS Code.",
+  "version": "0.0.1",
+  "publisher": "leodanielalvarez",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "fh.open",
+        "title": "FriendHub: Abrir panel",
+        "category": "FriendHub"
+      },
+      {
+        "command": "fh.login",
+        "title": "FriendHub: Iniciar sesión con GitHub",
+        "category": "FriendHub"
+      }
+    ],
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "friendhub",
+          "title": "FriendHub",
+          "icon": "$(organization)"
+        }
+      ]
+    },
+    "views": {
+      "friendhub": [
+        {
+          "id": "friendhub.main",
+          "name": "FriendHub",
+          "type": "webview"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "FriendHub",
+      "properties": {
+        "friendhub.supabaseUrl": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "URL del proyecto Supabase (p. ej. `https://xxxx.supabase.co`)."
+        },
+        "friendhub.supabaseAnonKey": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Clave pública (anon) de Supabase."
+        },
+        "friendhub.githubClientId": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Client ID de la GitHub OAuth App."
+        },
+        "friendhub.githubClientSecret": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Client Secret de la GitHub OAuth App."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "dev": "npm run compile -- --watch",
+    "lint": "eslint src --ext ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.57.0",
+    "typescript": "^5.4.0"
+  }
+}
