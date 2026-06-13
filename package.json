@@ -51,22 +51,22 @@
         "friendhub.supabaseUrl": {
           "type": "string",
           "default": "",
-          "markdownDescription": "URL del proyecto Supabase (p. ej. `https://xxxx.supabase.co`)."
+          "description": "URL de tu proyecto Supabase"
         },
         "friendhub.supabaseAnonKey": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Clave pública (anon) de Supabase."
+          "description": "Anon key de tu proyecto Supabase"
         },
         "friendhub.githubClientId": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Client ID de la GitHub OAuth App."
+          "description": "Client ID de tu GitHub OAuth App"
         },
         "friendhub.githubClientSecret": {
           "type": "string",
           "default": "",
-          "markdownDescription": "Client Secret de la GitHub OAuth App."
+          "description": "Client Secret de tu GitHub OAuth App"
         }
       }
     }
