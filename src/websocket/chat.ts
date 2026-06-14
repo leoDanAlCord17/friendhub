@@ -13,23 +13,14 @@ import { emitir } from "../output";
  * Chat en tiempo real sobre Supabase Realtime **Broadcast**.
  *
  * Los mensajes NO se persisten en base de datos: solo se transmiten en vivo
- * por el canal de la conversación. Se aplica un rate-limit de 5 minutos entre
- * mensajes del mismo emisor en la misma conversación.
+ * por el canal de la conversación.
  */
 
 export type ManejadorMensaje = (mensaje: Mensaje) => void;
 
-/** Milisegundos mínimos entre mensajes de un mismo emisor. */
-export const INTERVALO_MENSAJE_MS = 5 * 60 * 1000;
-
 const EVENTO = "mensaje";
 
-interface SuscripcionActiva {
-  canal: RealtimeChannel;
-  ultimoEnvio: Map<string, number>;
-}
-
-const suscripciones = new Map<string, SuscripcionActiva>();
+const suscripciones = new Map<string, RealtimeChannel>();
 
 /** Se suscribe a los mensajes en vivo de una conversación. */
 export function suscribirseAlChat(
@@ -47,52 +38,35 @@ export function suscribirseAlChat(
     })
     .subscribe();
 
-  suscripciones.set(conversacion_id, {
-    canal,
-    ultimoEnvio: new Map(),
-  });
+  suscripciones.set(conversacion_id, canal);
   return canal;
 }
 
-/**
- * Envía un mensaje por el canal de la conversación.
- *
- * Lanza un error si no han pasado al menos {@link INTERVALO_MENSAJE_MS} desde
- * el último envío de ese mismo autor.
- */
+/** Envía un mensaje por el canal de la conversación. */
 export async function enviarMensaje(
   conversacion_id: string,
   contenido: string,
   autor_id: string,
 ): Promise<Mensaje> {
-  const sub = suscripciones.get(conversacion_id);
-  if (!sub) {
+  const canal = suscripciones.get(conversacion_id);
+  if (!canal) {
     throw new Error("No estás suscrito a esta conversación.");
   }
 
   const ahora = Date.now();
-  const ultimo = sub.ultimoEnvio.get(autor_id) ?? 0;
-  const restante = INTERVALO_MENSAJE_MS - (ahora - ultimo);
-  if (restante > 0) {
-    const seg = Math.ceil(restante / 1000);
-    throw new Error(
-      `Espera ${Math.ceil(seg / 60)} min antes de enviar otro mensaje.`,
-    );
-  }
-
   const mensaje: Mensaje = {
     id: `${ahora}-${autor_id}`,
     conversacion_id,
     remitente_id: autor_id,
     contenido,
-    estatus: "activo",
+    estatus: true,
     creado_en: new Date(ahora).toISOString(),
     creado_por: autor_id,
     actualizado_en: new Date(ahora).toISOString(),
     actualizado_por: autor_id,
   };
 
-  const estado = await sub.canal.send({
+  const estado = await canal.send({
     type: "broadcast",
     event: EVENTO,
     payload: mensaje,
@@ -101,15 +75,14 @@ export async function enviarMensaje(
     throw new Error(`No se pudo enviar el mensaje (${estado}).`);
   }
 
-  sub.ultimoEnvio.set(autor_id, ahora);
   return mensaje;
 }
 
 /** Cierra la suscripción de una conversación. */
 export function desuscribirse(conversacion_id: string): void {
-  const sub = suscripciones.get(conversacion_id);
-  if (sub) {
-    getSupabase().removeChannel(sub.canal);
+  const canal = suscripciones.get(conversacion_id);
+  if (canal) {
+    getSupabase().removeChannel(canal);
     suscripciones.delete(conversacion_id);
   }
 }
@@ -176,10 +149,8 @@ export function escucharInvitaciones(
           await actualizarConversacionActiva(otroId, conv.id);
           iniciarChat(conv.id, miId, otroUsername);
           emitir(`  ✓ @${otroUsername} aceptó tu invitación.`);
-          emitir(
-            "  conversación iniciada. recuerda: 1 mensaje cada 5 minutos.",
-          );
-          emitir("  escribe /fh stack para ver la compatibilidad.");
+          emitir("  conversación iniciada.");
+          emitir("  escribe /mh stack para ver la compatibilidad.");
           cerrarCanalInvitacion(clave);
         } else if (estado === "rechazada") {
           emitir(`  @${otroUsername} no está disponible ahora.`);
@@ -196,7 +167,7 @@ export function escucharInvitaciones(
 
 /**
  * Escucha las invitaciones entrantes (INSERT) dirigidas al usuario actual e
- * imprime la tarjeta con las opciones /fh accept y /fh reject.
+ * imprime la tarjeta con las opciones /mh accept y /mh reject.
  */
 export function escucharInvitacionesEntrantes(
   usuario_id: string,
@@ -234,8 +205,8 @@ export function escucharInvitacionesEntrantes(
             "  ",
             `  compatibilidad: ${barra10(invit.puntaje)} ${invit.puntaje}%`,
             "  ",
-            "  /fh accept   → aceptar",
-            "  /fh reject   → rechazar",
+            "  /mh accept   → aceptar",
+            "  /mh reject   → rechazar",
             "  ──────────────────────────────────────",
           ].join("\n"),
         );

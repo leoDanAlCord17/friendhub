@@ -1,7 +1,1 @@
-{
-  "functions": {
-    "api/callback.js": {
-      "runtime": "nodejs20.x"
-    }
-  }
-}
+{}

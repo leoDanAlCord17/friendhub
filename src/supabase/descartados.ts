@@ -40,7 +40,7 @@ export async function precargarDescartes(usuario_id: string): Promise<void> {
     .from(TABLA)
     .select("descartado_id")
     .eq("usuario_id", usuario_id)
-    .eq("estatus", "activo");
+    .eq("estatus", true);
   if (error) {
     throw error;
   }

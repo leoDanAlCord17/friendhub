@@ -1,69 +1,79 @@
 {
-  "name": "friendhub",
-  "displayName": "FriendHub",
+  "name": "meethub",
+  "displayName": "MeetHub",
   "description": "Conecta con otros desarrolladores desde el panel inferior de VS Code.",
   "version": "0.0.1",
   "publisher": "leodanielalvarez",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/leodanielalvarez/meethub.git"
+  },
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.80.0",
+    "node": "20.x"
   },
   "categories": [
     "Other"
   ],
   "main": "./out/extension.js",
   "activationEvents": [
-    "onStartupFinished"
+    "onStartupFinished",
+    "onUri"
   ],
   "contributes": {
+    "uriHandlers": [
+      {}
+    ],
     "commands": [
       {
-        "command": "fh.open",
-        "title": "FriendHub: Abrir panel",
-        "category": "FriendHub"
+        "command": "mh.open",
+        "title": "MeetHub: Abrir panel",
+        "category": "MeetHub"
       },
       {
-        "command": "fh.login",
-        "title": "FriendHub: Iniciar sesión con GitHub",
-        "category": "FriendHub"
+        "command": "mh.login",
+        "title": "MeetHub: Iniciar sesión con GitHub",
+        "category": "MeetHub"
       }
     ],
     "viewsContainers": {
       "panel": [
         {
-          "id": "friendhub",
-          "title": "FriendHub",
+          "id": "meethub",
+          "title": "MeetHub",
           "icon": "$(organization)"
         }
       ]
     },
     "views": {
-      "friendhub": [
+      "meethub": [
         {
-          "id": "friendhub.main",
-          "name": "FriendHub",
+          "id": "meethub.main",
+          "name": "MeetHub",
           "type": "webview"
         }
       ]
     },
     "configuration": {
-      "title": "FriendHub",
+      "title": "MeetHub",
       "properties": {
-        "friendhub.supabaseUrl": {
+        "meethub.supabaseUrl": {
           "type": "string",
           "default": "",
           "description": "URL de tu proyecto Supabase"
         },
-        "friendhub.supabaseAnonKey": {
+        "meethub.supabaseAnonKey": {
           "type": "string",
           "default": "",
           "description": "Anon key de tu proyecto Supabase"
         },
-        "friendhub.githubClientId": {
+        "meethub.githubClientId": {
           "type": "string",
           "default": "",
           "description": "Client ID de tu GitHub OAuth App"
         },
-        "friendhub.githubClientSecret": {
+        "meethub.githubClientSecret": {
           "type": "string",
           "default": "",
           "description": "Client Secret de tu GitHub OAuth App"
@@ -83,7 +93,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "^1.80.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
     "eslint": "^8.57.0",

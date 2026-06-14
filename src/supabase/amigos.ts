@@ -75,7 +75,7 @@ export async function obtenerAmigos(usuario_id: string): Promise<Amigo[]> {
     .select("*")
     .eq("usuario_id", usuario_id)
     .eq("confirmada", true)
-    .eq("estatus", "activo");
+    .eq("estatus", true);
   if (error) {
     throw error;
   }

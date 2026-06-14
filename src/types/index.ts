@@ -1,17 +1,14 @@
 /**
- * Tipos compartidos de FriendHub.
+ * Tipos compartidos de MeetHub.
  *
  * Las interfaces de tablas reflejan exactamente el esquema de Supabase.
  * Todas incluyen los campos de control estándar (ver {@link CamposControl}).
  */
 
-/** Estado lógico de cualquier registro. */
-export type Estatus = "activo" | "inactivo" | "eliminado";
-
 /** Campos de control presentes en todas las tablas. */
 export interface CamposControl {
   id: string;
-  estatus: Estatus;
+  estatus: boolean;
   creado_en: string;
   creado_por: string | null;
   actualizado_en: string;
@@ -26,6 +23,7 @@ export interface CamposControl {
 export interface Usuario extends CamposControl {
   github_id: string;
   github_login: string;
+  nombre_usuario: string | null;
   nombre: string | null;
   avatar_url: string | null;
   email: string | null;
@@ -33,7 +31,7 @@ export interface Usuario extends CamposControl {
   location: string | null;
   zona_horaria: string | null;
   disponible: boolean;
-  busca: "amigos" | "algo_mas" | null;
+  busca: "colaborar" | "networking" | "ambas" | null;
   conversacion_activa_id: string | null;
 }
 
@@ -111,8 +109,8 @@ export interface ResultadoCompatibilidad {
   };
 }
 
-/** Comandos `/fh` disponibles en el chat. */
-export type ComandoFh =
+/** Comandos `/mh` disponibles en el chat. */
+export type ComandoMh =
   | "login"
   | "search"
   | "friends"
@@ -121,12 +119,28 @@ export type ComandoFh =
   | "status"
   | "add"
   | "leave"
-  | "timer"
   | "readme"
   | "stack"
+  | "profile"
+  | "clear"
   | "connect"
   | "accept"
   | "reject";
 
+/** Objeto de control que un comando puede devolver al panel. */
+export interface RespuestaModo {
+  modo: "edicion_bio";
+}
+
+/** Acción especial que el panel debe ejecutar (p. ej. limpiar la pantalla). */
+export interface RespuestaAccion {
+  accion: "clear";
+}
+
+/** Resultado de un comando: texto a imprimir o una señal de modo/acción. */
+export type ResultadoComando = string | RespuestaModo | RespuestaAccion;
+
 /** Firma de un handler de comando del chat. */
-export type ComandoHandler = (args: string[]) => Promise<string> | string;
+export type ComandoHandler = (
+  args: string[],
+) => Promise<ResultadoComando> | ResultadoComando;

@@ -1,6 +1,9 @@
 import { Invitacion, Proyecto, Usuario } from "./types";
+import { obtenerProyectoActivo } from "./supabase/proyectos";
+import { obtenerAmigos } from "./supabase/amigos";
+import { obtenerUsuario } from "./supabase/usuarios";
 
-/** Match propuesto al usuario (resultado de /fh search). */
+/** Match propuesto al usuario (resultado de /mh search). */
 export interface MatchActual {
   usuario: Usuario;
   proyecto: Proyecto | null;
@@ -14,14 +17,16 @@ export interface InvitacionPendiente {
 }
 
 /**
- * Estado de sesión en memoria de FriendHub. Lo puebla la extensión tras el
- * login de GitHub y lo consultan los comandos `/fh`.
+ * Estado de sesión en memoria de MeetHub. Lo puebla la extensión tras el
+ * login de GitHub y lo consultan los comandos `/mh`.
  */
 interface EstadoSesion {
   usuario: Usuario | null;
   match: MatchActual | null;
   puntaje: number;
   invitacionPendiente: InvitacionPendiente | null;
+  proyectoActual: Proyecto | null;
+  amigosCache: Usuario[];
 }
 
 const estado: EstadoSesion = {
@@ -29,6 +34,8 @@ const estado: EstadoSesion = {
   match: null,
   puntaje: 0,
   invitacionPendiente: null,
+  proyectoActual: null,
+  amigosCache: [],
 };
 
 /** Define el usuario autenticado de la sesión. */
@@ -67,4 +74,39 @@ export function setInvitacionPendiente(
 /** Devuelve la invitación entrante pendiente (o null). */
 export function getInvitacionPendiente(): InvitacionPendiente | null {
   return estado.invitacionPendiente;
+}
+
+/** Proyecto activo del usuario (cacheado al login). */
+export function setProyectoActual(proyecto: Proyecto | null): void {
+  estado.proyectoActual = proyecto;
+}
+
+export function getProyectoActual(): Proyecto | null {
+  return estado.proyectoActual;
+}
+
+/** Amigos del usuario (cacheados al login). */
+export function setAmigosCache(amigos: Usuario[]): void {
+  estado.amigosCache = amigos;
+}
+
+export function getAmigosCache(): Usuario[] {
+  return estado.amigosCache;
+}
+
+/**
+ * Carga en una sola pasada todo el estado de sesión necesario tras el login:
+ * proyecto activo y amigos (resueltos a sus usuarios).
+ */
+export async function cargarSesion(usuario: Usuario): Promise<void> {
+  const [proyecto, amigos] = await Promise.all([
+    obtenerProyectoActivo(usuario.id),
+    obtenerAmigos(usuario.id),
+  ]);
+  setProyectoActual(proyecto);
+
+  const usuarios = await Promise.all(
+    amigos.map((a) => obtenerUsuario(a.amigo_id)),
+  );
+  setAmigosCache(usuarios.filter((u): u is Usuario => u !== null));
 }

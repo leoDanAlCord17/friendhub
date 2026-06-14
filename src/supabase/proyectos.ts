@@ -12,7 +12,7 @@ export async function obtenerProyectoActivo(
     .from(TABLA)
     .select("*")
     .eq("usuario_id", usuario_id)
-    .eq("estatus", "activo")
+    .eq("estatus", true)
     .order("actualizado_en", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -45,7 +45,7 @@ export async function listarProyectos(): Promise<Proyecto[]> {
   const { data, error } = await getSupabase()
     .from(TABLA)
     .select("*")
-    .eq("estatus", "activo");
+    .eq("estatus", true);
   if (error) {
     throw error;
   }

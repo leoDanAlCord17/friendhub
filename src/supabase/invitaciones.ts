@@ -53,7 +53,7 @@ export async function obtenerInvitacionesPendientes(
     .select("*")
     .eq("para_usuario", usuario_id)
     .eq("estado", "pendiente")
-    .eq("estatus", "activo")
+    .eq("estatus", true)
     .order("creado_en", { ascending: false });
   if (error) {
     throw error;

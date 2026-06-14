@@ -4,12 +4,12 @@ import { getUsuarioActual } from "../state";
 import { setEmisor } from "../output";
 
 /**
- * Proveedor del webview de FriendHub que vive en el panel inferior de VS Code
+ * Proveedor del webview de MeetHub que vive en el panel inferior de VS Code
  * (junto a la Terminal). Renderiza una consola estilo terminal donde el
- * usuario escribe comandos `/fh` y recibe las respuestas.
+ * usuario escribe comandos `/mh` y recibe las respuestas.
  */
-export class FriendHubPanel implements vscode.WebviewViewProvider {
-  public static readonly viewType = "friendhub.main";
+export class MeetHubPanel implements vscode.WebviewViewProvider {
+  public static readonly viewType = "meethub.main";
 
   private view?: vscode.WebviewView;
   private loginIntentado = false;
@@ -31,17 +31,33 @@ export class FriendHubPanel implements vscode.WebviewViewProvider {
     webviewView.webview.onDidReceiveMessage(async (msg) => {
       if (msg?.tipo === "comando" && typeof msg.texto === "string") {
         const respuesta = await ejecutarComando(msg.texto);
-        webviewView.webview.postMessage({
-          tipo: "salida",
-          texto: respuesta ?? `comando no reconocido: ${msg.texto}`,
-        });
+        if (respuesta && typeof respuesta === "object" && "modo" in respuesta) {
+          webviewView.webview.postMessage({
+            tipo: "modo",
+            modo: respuesta.modo,
+          });
+        } else if (
+          respuesta &&
+          typeof respuesta === "object" &&
+          "accion" in respuesta
+        ) {
+          webviewView.webview.postMessage({
+            tipo: "accion",
+            accion: respuesta.accion,
+          });
+        } else {
+          webviewView.webview.postMessage({
+            tipo: "salida",
+            texto: respuesta ?? `comando no reconocido: ${msg.texto}`,
+          });
+        }
       }
     });
 
     // Primer arranque sin sesión: dispara el login automáticamente.
     if (!this.loginIntentado && !getUsuarioActual()) {
       this.loginIntentado = true;
-      void vscode.commands.executeCommand("fh.login");
+      void vscode.commands.executeCommand("mh.login");
     }
   }
 
@@ -50,7 +66,7 @@ export class FriendHubPanel implements vscode.WebviewViewProvider {
     this.view?.webview.postMessage({ tipo: "salida", texto });
   }
 
-  /** Da foco a la vista (usado por el comando fh.open). */
+  /** Da foco a la vista (usado por el comando mh.open). */
   public mostrar(): void {
     this.view?.show?.(true);
   }
@@ -64,7 +80,7 @@ export class FriendHubPanel implements vscode.WebviewViewProvider {
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FriendHub</title>
+  <title>MeetHub</title>
   <style>
     html, body {
       height: 100%;
@@ -109,6 +125,14 @@ export class FriendHubPanel implements vscode.WebviewViewProvider {
       font-size: inherit;
     }
     #entrada::placeholder { color: #6b6b6b; }
+    #hint {
+      display: none;
+      color: #d7ba7d;
+      font-size: 11px;
+      padding: 2px 0 0 14px;
+    }
+    #hint.visible { display: block; }
+    #prompt-fila.edicion { border-top-color: #d7ba7d; }
     #output::-webkit-scrollbar { width: 10px; }
     #output::-webkit-scrollbar-thumb { background: #424242; border-radius: 5px; }
   </style>
@@ -119,13 +143,25 @@ export class FriendHubPanel implements vscode.WebviewViewProvider {
     <div id="prompt-fila">
       <span id="signo">&gt;</span>
       <input id="entrada" type="text" autocomplete="off" spellcheck="false"
-        placeholder="escribe un comando  /fh help" />
+        placeholder="escribe un comando  /mh help" />
     </div>
+    <div id="hint"></div>
   </div>
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     const output = document.getElementById('output');
     const entrada = document.getElementById('entrada');
+    const hint = document.getElementById('hint');
+    const fila = document.getElementById('prompt-fila');
+
+    const PLACEHOLDER_NORMAL = 'escribe un comando  /mh help';
+    const PLACEHOLDER_BIO = 'escribe tu bio aquí y presiona Enter...';
+    let modoEdicion = false;
+
+    // Historial de comandos (solo entradas que empiezan con /mh).
+    const MAX_HISTORIAL = 50;
+    let historialComandos = [];
+    let indiceHistorial = -1;
 
     function imprimir(texto, clase) {
       const div = document.createElement('div');
@@ -135,38 +171,124 @@ export class FriendHubPanel implements vscode.WebviewViewProvider {
       output.scrollTop = output.scrollHeight;
     }
 
+    function mostrarBienvenida() {
+      imprimir([
+        '╔═══════════════════════════════════════╗',
+        '║             M E E T H U B             ║',
+        '║       conecta con otros devs          ║',
+        '╚═══════════════════════════════════════╝',
+        '',
+        'v0.1.0  ·  hecho para devs, por devs',
+        '',
+        'para empezar:',
+        '  1. escribe /mh login     → conecta tu GitHub',
+        '  2. escribe /mh search    → busca un match',
+        '  3. escribe /mh help      → ver todos los comandos',
+        '',
+        '────────────────────────────────────────'
+      ].join('\\n'), 'sistema');
+    }
+
+    function limpiarPantalla() {
+      output.textContent = '';
+      mostrarBienvenida();
+    }
+
+    function entrarEdicionBio() {
+      modoEdicion = true;
+      entrada.placeholder = PLACEHOLDER_BIO;
+      hint.textContent = 'modo edición · ESC para cancelar';
+      hint.classList.add('visible');
+      fila.classList.add('edicion');
+      entrada.focus();
+    }
+
+    function salirEdicionBio() {
+      modoEdicion = false;
+      entrada.placeholder = PLACEHOLDER_NORMAL;
+      hint.classList.remove('visible');
+      fila.classList.remove('edicion');
+    }
+
+    function agregarAlHistorial(texto) {
+      if (!texto.startsWith('/mh')) { return; }
+      if (historialComandos[historialComandos.length - 1] !== texto) {
+        historialComandos.push(texto);
+        if (historialComandos.length > MAX_HISTORIAL) {
+          historialComandos.shift();
+        }
+      }
+      indiceHistorial = -1;
+    }
+
     function enviar() {
       const texto = entrada.value.trim();
       if (!texto) { return; }
+      if (modoEdicion) {
+        imprimir('> ' + texto, 'eco');
+        vscode.postMessage({ tipo: 'comando', texto: '__BIO__:' + texto });
+        entrada.value = '';
+        salirEdicionBio();
+        return;
+      }
       imprimir('> ' + texto, 'eco');
       vscode.postMessage({ tipo: 'comando', texto });
+      agregarAlHistorial(texto);
       entrada.value = '';
+    }
+
+    function historialArriba() {
+      if (historialComandos.length === 0) { return; }
+      if (indiceHistorial === -1) {
+        indiceHistorial = historialComandos.length - 1;
+      } else if (indiceHistorial > 0) {
+        indiceHistorial--;
+      }
+      entrada.value = historialComandos[indiceHistorial];
+    }
+
+    function historialAbajo() {
+      if (indiceHistorial === -1) { return; }
+      if (indiceHistorial < historialComandos.length - 1) {
+        indiceHistorial++;
+        entrada.value = historialComandos[indiceHistorial];
+      } else {
+        indiceHistorial = -1;
+        entrada.value = '';
+      }
     }
 
     entrada.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { e.preventDefault(); enviar(); }
+      else if (e.key === 'Escape' && modoEdicion) {
+        e.preventDefault();
+        entrada.value = '';
+        salirEdicionBio();
+        imprimir('edición cancelada.', 'sistema');
+      }
+      else if (e.key === 'ArrowUp' && !modoEdicion) {
+        e.preventDefault();
+        historialArriba();
+      }
+      else if (e.key === 'ArrowDown' && !modoEdicion) {
+        e.preventDefault();
+        historialAbajo();
+      }
     });
 
     window.addEventListener('message', (e) => {
-      if (e.data && e.data.tipo === 'salida') { imprimir(e.data.texto); }
+      if (!e.data) { return; }
+      if (e.data.tipo === 'salida') { imprimir(e.data.texto); }
+      else if (e.data.tipo === 'modo' && e.data.modo === 'edicion_bio') {
+        entrarEdicionBio();
+      }
+      else if (e.data.tipo === 'accion' && e.data.accion === 'clear') {
+        limpiarPantalla();
+      }
     });
 
     // Pantalla de bienvenida.
-    imprimir([
-      '╔═══════════════════════════════════════╗',
-      '║          F R I E N D H U B           ║',
-      '║       conecta con otros devs          ║',
-      '╚═══════════════════════════════════════╝',
-      '',
-      'v0.1.0  ·  hecho para devs, por devs',
-      '',
-      'para empezar:',
-      '  1. escribe /fh login     → conecta tu GitHub',
-      '  2. escribe /fh search    → busca un match',
-      '  3. escribe /fh help      → ver todos los comandos',
-      '',
-      '────────────────────────────────────────'
-    ].join('\\n'), 'sistema');
+    mostrarBienvenida();
     entrada.focus();
   </script>
 </body>

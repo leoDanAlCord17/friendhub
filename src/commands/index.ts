@@ -1,5 +1,11 @@
 import * as vscode from "vscode";
-import { ComandoFh, ComandoHandler, Proyecto, Usuario } from "../types";
+import {
+  ComandoMh,
+  ComandoHandler,
+  ResultadoComando,
+  Proyecto,
+  Usuario,
+} from "../types";
 import {
   getUsuarioActual,
   setUsuarioActual,
@@ -8,11 +14,15 @@ import {
   getPuntajeActual,
   getInvitacionPendiente,
   setInvitacionPendiente,
+  getProyectoActual,
+  getAmigosCache,
+  setAmigosCache,
 } from "../state";
 import { detectarWorkspace, obtenerProyectoActivo } from "../supabase/proyectos";
 import {
   buscarMatch,
   actualizarConversacionActiva,
+  actualizarBio,
   obtenerUsuario,
   obtenerUsuarioPorGithubId,
 } from "../supabase/usuarios";
@@ -27,28 +37,24 @@ import {
   responderInvitacion,
 } from "../supabase/invitaciones";
 import { calcularCompatibilidad } from "../compatibility/score";
-import {
-  INTERVALO_MENSAJE_MS,
-  escucharInvitaciones,
-  iniciarChat,
-} from "../websocket/chat";
+import { escucharInvitaciones, iniciarChat } from "../websocket/chat";
 
 /**
- * Registro de los comandos `/fh` del chat de FriendHub. Cada handler recibe
- * los argumentos (sin el `/fh <comando>`) y devuelve el texto a renderizar.
+ * Registro de los comandos `/mh` del chat de MeetHub. Cada handler recibe
+ * los argumentos (sin el `/mh <comando>`) y devuelve el texto a renderizar.
  */
 
-const handlers: Record<ComandoFh, ComandoHandler> = {
-  /** /fh login — inicia el flujo de GitHub OAuth. */
+const handlers: Record<ComandoMh, ComandoHandler> = {
+  /** /mh login — inicia el flujo de GitHub OAuth. */
   login: async () => {
     if (getUsuarioActual()) {
       return `  ya tienes sesión como @${getUsuarioActual()?.github_login}.`;
     }
-    await vscode.commands.executeCommand("fh.login");
+    await vscode.commands.executeCommand("mh.login");
     return "  abriendo el navegador para conectar tu GitHub...";
   },
 
-  /** /fh search — busca un desarrollador compatible disponible. */
+  /** /mh search — busca un desarrollador compatible disponible. */
   search: async () => {
     const base = requiereUsuario();
     if (typeof base === "string") {
@@ -57,11 +63,11 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
     const yo = await refrescarUsuario(base);
     const activa = await obtenerConversacionActiva(yo.id);
     if (activa) {
-      return "Ya tienes una conversación activa. Usa /fh leave para salir.";
+      return "Ya tienes una conversación activa. Usa /mh leave para salir.";
     }
 
     const miStack = await detectarWorkspace();
-    const match = await buscarMatch(yo.id, yo.busca ?? "amigos");
+    const match = await buscarMatch(yo.id, yo.busca ?? "colaborar");
     if (!match) {
       return "No hay desarrolladores disponibles ahora mismo. Intenta más tarde.";
     }
@@ -78,27 +84,42 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
       compatibilidad: puntaje,
     });
 
-    return formatoMatch(match, proyectoMatch, puntaje);
+    const postal =
+      renderPostal(
+        match.github_login,
+        match.location,
+        match.bio,
+        proyectoMatch,
+      ) + "\n\n";
+
+    return postal + formatoMatch(match, proyectoMatch, puntaje);
   },
 
-  /** /fh friends — lista tus amigos confirmados con su stack. */
+  /** /mh friends — lista tus amigos confirmados con su stack. */
   friends: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
       return yo;
     }
-    const amigos = await obtenerAmigos(yo.id);
+
+    // Usa el caché de amigos; solo refetch si está vacío.
+    let amigos = getAmigosCache();
     if (amigos.length === 0) {
-      return "  aún no tienes amigos. usa /fh search para conocer devs.";
+      const relaciones = await obtenerAmigos(yo.id);
+      const usuarios = await Promise.all(
+        relaciones.map((a) => obtenerUsuario(a.amigo_id)),
+      );
+      amigos = usuarios.filter((u): u is Usuario => u !== null);
+      setAmigosCache(amigos);
+    }
+    if (amigos.length === 0) {
+      return "  aún no tienes amigos. usa /mh search para conocer devs.";
     }
 
     const filas = await Promise.all(
-      amigos.map(async (a) => {
-        const [usuario, proyecto] = await Promise.all([
-          obtenerUsuario(a.amigo_id),
-          obtenerProyectoActivo(a.amigo_id),
-        ]);
-        const username = `@${usuario?.github_login ?? a.amigo_id}`;
+      amigos.map(async (usuario) => {
+        const proyecto = await obtenerProyectoActivo(usuario.id);
+        const username = `@${usuario.github_login}`;
         const stack = (proyecto?.stack ?? []).slice(0, 2).join(" · ") || "—";
         return { username, stack };
       }),
@@ -115,12 +136,12 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
       cuerpo,
       "",
       `  total: ${filas.length} amigo${filas.length === 1 ? "" : "s"}`,
-      "  usa /fh invite @username para iniciar chat",
+      "  usa /mh invite @username para iniciar chat",
       "  ──────────────────────────────────────",
     ].join("\n");
   },
 
-  /** /fh invite @username — invita a un amigo guardado a chatear. */
+  /** /mh invite @username — invita a un amigo guardado a chatear. */
   invite: async (args) => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -128,7 +149,7 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
     }
     const username = (args[0] ?? "").replace(/^@/, "");
     if (!username) {
-      return "Uso: /fh invite @username";
+      return "Uso: /mh invite @username";
     }
 
     const amigos = await obtenerAmigos(yo.id);
@@ -142,7 +163,7 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
 
     const activa = await obtenerConversacionActiva(yo.id);
     if (activa) {
-      return "  ya tienes una conversación activa. usa /fh leave para salir primero.";
+      return "  ya tienes una conversación activa. usa /mh leave para salir primero.";
     }
 
     const [miProyecto, proyectoAmigo] = await Promise.all([
@@ -169,21 +190,21 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
     ].join("\n");
   },
 
-  /** /fh help — muestra los comandos disponibles. */
+  /** /mh help — muestra los comandos disponibles. */
   help: async () => textoAyuda(),
 
-  /** /fh status — resumen de sesión, workspace y conexiones. */
+  /** /mh status — resumen de sesión, workspace y conexiones. */
   status: async () => {
     const base = requiereUsuario();
     if (typeof base === "string") {
       return base;
     }
     const yo = await refrescarUsuario(base);
-    const [info, amigos] = await Promise.all([
-      detectarWorkspace(),
-      obtenerAmigos(yo.id),
-    ]);
-    const stack = (info.stack ?? []).slice(0, 3).join(" · ") || "—";
+    // Workspace en vivo; el stack guardado viene del proyecto cacheado.
+    const info = await detectarWorkspace();
+    const proyecto = getProyectoActual();
+    const stackFuente = proyecto?.stack ?? info.stack ?? [];
+    const stack = stackFuente.slice(0, 3).join(" · ") || "—";
 
     return [
       "  ── estado actual ─────────────────────",
@@ -199,12 +220,12 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
       `    stack:     ${stack}`,
       "",
       `  conversación activa:  ${yo.conversacion_activa_id ? "sí" : "no"}`,
-      `  amigos:               ${amigos.length}`,
+      `  amigos:               ${getAmigosCache().length}`,
       "  ──────────────────────────────────────",
     ].join("\n");
   },
 
-  /** /fh add <usuario> — propone amistad en la conversación activa. */
+  /** /mh add <usuario> — propone amistad en la conversación activa. */
   add: async (args) => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -212,17 +233,18 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
     }
     const destino = args[0];
     if (!destino) {
-      return "Uso: /fh add <usuario>";
+      return "Uso: /mh add <usuario>";
     }
     const conv = await obtenerConversacionActiva(yo.id);
     if (!conv) {
       return "No tienes una conversación activa para proponer amistad.";
     }
     await proponerAmistad(yo.id, destino, conv.id);
+    setAmigosCache([]); // invalida el caché → refetch en el próximo /mh friends
     return `Propuesta de amistad enviada a ${destino}.`;
   },
 
-  /** /fh leave — cierra la conversación activa. */
+  /** /mh leave — cierra la conversación activa. */
   leave: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -236,30 +258,7 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
     return "Has salido de la conversación.";
   },
 
-  /** /fh timer — tiempo restante para poder enviar el siguiente mensaje. */
-  timer: async () => {
-    const yo = requiereUsuario();
-    if (typeof yo === "string") {
-      return yo;
-    }
-    const conv = await obtenerConversacionActiva(yo.id);
-    if (!conv) {
-      return "No tienes una conversación activa.";
-    }
-    if (!conv.ultimo_mensaje_en) {
-      return "Puedes enviar un mensaje ahora.";
-    }
-    const transcurrido = Date.now() - new Date(conv.ultimo_mensaje_en).getTime();
-    const restante = INTERVALO_MENSAJE_MS - transcurrido;
-    if (restante <= 0) {
-      return "Puedes enviar un mensaje ahora.";
-    }
-    const min = Math.floor(restante / 60000);
-    const seg = Math.floor((restante % 60000) / 1000);
-    return `Próximo mensaje disponible en ${min}m ${seg}s.`;
-  },
-
-  /** /fh readme — muestra el README completo del proyecto del match. */
+  /** /mh readme — muestra el README completo del proyecto del match. */
   readme: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -277,7 +276,7 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
     return proyecto.readme;
   },
 
-  /** /fh stack — barra de compatibilidad con el match de la conversación. */
+  /** /mh stack — barra de compatibilidad con el match de la conversación. */
   stack: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -298,7 +297,27 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
     return tablaCompatibilidad(mio, suyo);
   },
 
-  /** /fh connect — envía la invitación al match actual. */
+  /** /mh profile [edit] — muestra tu postal o activa la edición de la bio. */
+  profile: async (args) => {
+    const yo = requiereUsuario();
+    if (typeof yo === "string") {
+      return yo;
+    }
+    if (args[0] === "edit") {
+      return { modo: "edicion_bio" };
+    }
+
+    const proyecto = getProyectoActual();
+    const postal = renderPostal(yo.github_login, yo.location, yo.bio, proyecto);
+    return `${postal}\n\n  /mh profile edit → escribir tu bio`;
+  },
+
+  /** /mh clear — limpia la pantalla del panel. */
+  clear: async () => {
+    return { accion: "clear" };
+  },
+
+  /** /mh connect — envía la invitación al match actual. */
   connect: async () => {
     const base = requiereUsuario();
     if (typeof base === "string") {
@@ -306,11 +325,11 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
     }
     const match = getMatchActual();
     if (!match) {
-      return "  no hay match activo. usa /fh search primero.";
+      return "  no hay match activo. usa /mh search primero.";
     }
     const yo = await refrescarUsuario(base);
     if (yo.conversacion_activa_id) {
-      return "  ya tienes una conversación activa. usa /fh leave para salir primero.";
+      return "  ya tienes una conversación activa. usa /mh leave para salir primero.";
     }
 
     const miProyecto = await obtenerProyectoActivo(yo.id);
@@ -335,7 +354,7 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
     ].join("\n");
   },
 
-  /** /fh accept — acepta la invitación pendiente. */
+  /** /mh accept — acepta la invitación pendiente. */
   accept: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -357,12 +376,12 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
     setInvitacionPendiente(null);
     return [
       `  ✓ aceptaste la invitación de @${pend.username}.`,
-      "  conversación iniciada. recuerda: 1 mensaje cada 5 minutos.",
-      "  escribe /fh stack para ver la compatibilidad.",
+      "  conversación iniciada.",
+      "  escribe /mh stack para ver la compatibilidad.",
     ].join("\n");
   },
 
-  /** /fh reject — rechaza la invitación pendiente. */
+  /** /mh reject — rechaza la invitación pendiente. */
   reject: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -379,20 +398,51 @@ const handlers: Record<ComandoFh, ComandoHandler> = {
 };
 
 /** Lista de comandos válidos. */
-export const COMANDOS: ComandoFh[] = Object.keys(handlers) as ComandoFh[];
+export const COMANDOS: ComandoMh[] = Object.keys(handlers) as ComandoMh[];
+
+/** Prefijo con el que el panel envía el texto de la bio en modo edición. */
+const PREFIJO_BIO = "__BIO__:";
 
 /**
- * Parsea y ejecuta una línea de chat (p. ej. `"/fh invite alice"`).
- * Devuelve `null` si la línea no empieza con `/fh`.
+ * Parsea y ejecuta una línea de chat (p. ej. `"/mh invite alice"`).
+ * Devuelve `null` si la línea no es un comando ni una entrada de bio.
  */
-export async function ejecutarComando(linea: string): Promise<string | null> {
+export async function ejecutarComando(
+  linea: string,
+): Promise<ResultadoComando | null> {
+  // Texto de bio enviado desde el panel en modo edición.
+  if (linea.startsWith(PREFIJO_BIO)) {
+    const bio = linea.slice(PREFIJO_BIO.length).trim();
+    const yo = getUsuarioActual();
+    if (!yo) {
+      return "Inicia sesión con GitHub para editar tu bio.";
+    }
+    if (bio.length > 280) {
+      return `la bio excede 280 caracteres (tienes ${bio.length}).`;
+    }
+    try {
+      await actualizarBio(yo.id, bio);
+    } catch (err) {
+      return `Error: ${(err as Error).message}`;
+    }
+    yo.bio = bio;
+    setUsuarioActual(yo);
+    const postal = renderPostal(
+      yo.github_login,
+      yo.location,
+      bio,
+      getProyectoActual(),
+    );
+    return `✓ bio guardada.\n\n${postal}`;
+  }
+
   const partes = linea.trim().split(/\s+/);
-  if (partes[0] !== "/fh") {
+  if (partes[0] !== "/mh") {
     return null;
   }
-  const nombre = partes[1] as ComandoFh | undefined;
+  const nombre = partes[1] as ComandoMh | undefined;
   if (!nombre || !(nombre in handlers)) {
-    return "Comando desconocido. Escribe /fh help.";
+    return "Comando desconocido. Escribe /mh help.";
   }
   try {
     return await handlers[nombre](partes.slice(2));
@@ -425,20 +475,21 @@ async function refrescarUsuario(yo: Usuario): Promise<Usuario> {
 
 function textoAyuda(): string {
   return [
-    "Comandos de FriendHub:",
-    "  /fh search           Busca desarrolladores compatibles",
-    "  /fh connect          Envía invitación al match actual",
-    "  /fh accept           Acepta la invitación pendiente",
-    "  /fh reject           Rechaza la invitación pendiente",
-    "  /fh friends          Lista tus amigos",
-    "  /fh invite <usuario> Invita a colaborar",
-    "  /fh add <usuario>    Propone amistad en la conversación actual",
-    "  /fh status           Muestra el stack detectado de tu workspace",
-    "  /fh stack            Compara tu stack con el de tu match",
-    "  /fh leave            Cierra la conversación actual",
-    "  /fh timer            Tiempo restante para el próximo mensaje",
-    "  /fh readme           Muestra el README del proyecto",
-    "  /fh help             Muestra esta ayuda",
+    "Comandos de MeetHub:",
+    "  /mh search           Busca desarrolladores compatibles",
+    "  /mh connect          Envía invitación al match actual",
+    "  /mh accept           Acepta la invitación pendiente",
+    "  /mh reject           Rechaza la invitación pendiente",
+    "  /mh friends          Lista tus amigos",
+    "  /mh invite <usuario> Invita a colaborar",
+    "  /mh add <usuario>    Propone amistad en la conversación actual",
+    "  /mh status           Muestra el stack detectado de tu workspace",
+    "  /mh stack            Compara tu stack con el de tu match",
+    "  /mh leave            Cierra la conversación actual",
+    "  /mh readme           Muestra el README del proyecto",
+    "  /mh profile          Muestra tu postal de presentación",
+    "  /mh clear            Limpia la pantalla",
+    "  /mh help             Muestra esta ayuda",
   ].join("\n");
 }
 
@@ -456,6 +507,84 @@ function lineaStack(proyecto: Proyecto | null): string {
   return [proyecto.lenguaje_principal, proyecto.stack[0], proyecto.dominio]
     .filter(Boolean)
     .join(" · ") || "—";
+}
+
+// ---------------------------------------------------------------------------
+// Postal de perfil (ASCII)
+// ---------------------------------------------------------------------------
+
+/** Ancho total de la postal (incluyendo bordes │ │). */
+const POSTAL_ANCHO = 41;
+
+/** Ancho de envoltura de la bio (deja sitio a comillas, sangría y bordes). */
+const BIO_WRAP = 33;
+
+/**
+ * Envuelve un texto en líneas de como máximo `maxChars` caracteres, sin partir
+ * nunca una palabra. Devuelve TODAS las líneas necesarias (sin límite ni
+ * truncado).
+ */
+function envolverTexto(texto: string, maxChars: number): string[] {
+  const palabras = texto.split(" ");
+  const lineas: string[] = [];
+  let actual = "";
+
+  for (const palabra of palabras) {
+    const tentativa = actual ? `${actual} ${palabra}` : palabra;
+    if (tentativa.length <= maxChars || !actual) {
+      actual = tentativa;
+    } else {
+      lineas.push(actual);
+      actual = palabra;
+    }
+  }
+  if (actual) {
+    lineas.push(actual);
+  }
+  return lineas;
+}
+
+/**
+ * Renderiza la postal ASCII de un usuario: @usuario, ubicación, bio completa
+ * (envuelta por palabras, sin recorte) y el stack. Ancho fijo.
+ */
+function renderPostal(
+  username: string,
+  location: string | null,
+  bio: string | null,
+  proyecto: Proyecto | null,
+): string {
+  const inner = POSTAL_ANCHO - 2;
+  const linea = (c: string): string =>
+    `│${`  ${c}`.padEnd(inner).slice(0, inner)}│`;
+
+  const cuerpo: string[] = [];
+  cuerpo.push(linea(`@${username}`));
+  cuerpo.push(linea(location ?? ""));
+  cuerpo.push(linea(""));
+
+  if (bio) {
+    const lineas = envolverTexto(bio, BIO_WRAP);
+    if (lineas.length === 1) {
+      cuerpo.push(linea(`"${lineas[0]}"`));
+    } else {
+      lineas.forEach((l, i) => {
+        if (i === 0) {
+          cuerpo.push(linea(`"${l}`));
+        } else if (i === lineas.length - 1) {
+          cuerpo.push(linea(` ${l}"`));
+        } else {
+          cuerpo.push(linea(` ${l}`));
+        }
+      });
+    }
+    cuerpo.push(linea(""));
+  }
+
+  cuerpo.push(linea(`stack: ${lineaStack(proyecto)}`));
+
+  const borde = "─".repeat(inner);
+  return [`┌${borde}┐`, ...cuerpo, `└${borde}┘`].join("\n");
 }
 
 function tablaCompatibilidad(mio: Proyecto, suyo: Proyecto): string {
@@ -480,7 +609,7 @@ function tablaCompatibilidad(mio: Proyecto, suyo: Proyecto): string {
   ].join("\n");
 }
 
-/** Tarjeta de resultado de /fh search. */
+/** Tarjeta de resultado de /mh search. */
 function formatoMatch(
   match: Usuario,
   proyecto: Proyecto | null,
@@ -502,8 +631,8 @@ function formatoMatch(
     "",
     `compatibilidad: ${barraCompat(puntaje)} ${puntaje}%`,
     "",
-    "/fh connect   → enviar invitación",
-    "/fh search    → buscar otro",
+    "/mh connect   → enviar invitación",
+    "/mh search    → buscar otro",
     "──────────────────────────────────────",
   ].join("\n");
 }

@@ -67,7 +67,7 @@ export async function actualizarConversacionActiva(
  * Busca un match disponible para el usuario.
  *
  * Filtra usuarios activos, libres (sin conversación activa), con la misma
- * intención `busca` ("amigos" | "algo_mas") y que no hayan sido descartados
+ * intención `busca` (colaborar | networking | ambas) y que no hayan sido descartados
  * por este usuario. Devuelve uno al azar, o null si no hay candidatos.
  */
 export async function buscarMatch(
@@ -80,7 +80,7 @@ export async function buscarMatch(
     .from("descartados")
     .select("descartado_id")
     .eq("usuario_id", usuario_id)
-    .eq("estatus", "activo");
+    .eq("estatus", true);
   if (errDesc) {
     throw errDesc;
   }
@@ -91,7 +91,7 @@ export async function buscarMatch(
   let query = supabase
     .from(TABLA)
     .select("*")
-    .eq("estatus", "activo")
+    .eq("estatus", true)
     .eq("busca", busca)
     .is("conversacion_activa_id", null)
     .neq("id", usuario_id);
@@ -111,10 +111,13 @@ export async function buscarMatch(
   return candidatos[Math.floor(Math.random() * candidatos.length)];
 }
 
-/** Actualiza la preferencia de búsqueda del usuario. */
+/**
+ * Actualiza la preferencia de búsqueda del usuario.
+ * El CHECK (válido solo a nivel de tipos) acepta: colaborar | networking | ambas.
+ */
 export async function actualizarBusca(
   id: string,
-  busca: "amigos" | "algo_mas",
+  busca: "colaborar" | "networking" | "ambas",
 ): Promise<Usuario> {
   const { data, error } = await getSupabase()
     .from(TABLA)
@@ -128,13 +131,24 @@ export async function actualizarBusca(
   return data as Usuario;
 }
 
+/** Actualiza la bio (carta de presentación) del usuario. */
+export async function actualizarBio(id: string, bio: string): Promise<void> {
+  const { error } = await getSupabase()
+    .from(TABLA)
+    .update({ bio, actualizado_en: new Date().toISOString() })
+    .eq("id", id);
+  if (error) {
+    throw error;
+  }
+}
+
 /** Lista los usuarios disponibles para conectar. */
 export async function listarDisponibles(): Promise<Usuario[]> {
   const { data, error } = await getSupabase()
     .from(TABLA)
     .select("*")
     .eq("disponible", true)
-    .eq("estatus", "activo");
+    .eq("estatus", true);
   if (error) {
     throw error;
   }
