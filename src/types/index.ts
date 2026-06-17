@@ -125,7 +125,8 @@ export type ComandoMh =
   | "clear"
   | "connect"
   | "accept"
-  | "reject";
+  | "reject"
+  | "read";
 
 /** Objeto de control que un comando puede devolver al panel. */
 export interface RespuestaModo {

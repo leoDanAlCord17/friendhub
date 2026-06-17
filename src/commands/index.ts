@@ -280,6 +280,31 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     return proyecto.readme;
   },
 
+  /** /mh read — muestra el README completo del match actual (antes de aceptar). */
+  read: async () => {
+    const yo = requiereUsuario();
+    if (typeof yo === "string") {
+      return yo;
+    }
+    const match = getMatchActual();
+    if (!match) {
+      return "  no hay match activo. usa /mh search primero.";
+    }
+    const proyecto = await obtenerProyectoActivo(match.usuario.id);
+    if (!proyecto?.readme) {
+      return "  el match no tiene README disponible.";
+    }
+    return [
+      `── README de @${match.usuario.github_login} ────────────────────`,
+      "",
+      proyecto.readme,
+      "",
+      "──────────────────────────────────────",
+      "/mh connect   → enviar invitación",
+      "/mh search    → buscar otro",
+    ].join("\n");
+  },
+
   /** /mh stack — barra de compatibilidad con el match de la conversación. */
   stack: async () => {
     const yo = requiereUsuario();
@@ -503,7 +528,8 @@ function textoAyuda(): string {
     "  /mh status           Muestra el stack detectado de tu workspace",
     "  /mh stack            Compara tu stack con el de tu match",
     "  /mh leave            Cierra la conversación actual",
-    "  /mh readme           Muestra el README del proyecto",
+    "  /mh read             Lee el README completo del match (antes de conectar)",
+    "  /mh readme           Muestra el README del match en conversación activa",
     "  /mh profile          Muestra tu postal de presentación",
     "  /mh clear            Limpia la pantalla",
     "  /mh help             Muestra esta ayuda",
@@ -633,15 +659,14 @@ function formatoMatch(
   puntaje: number,
 ): string {
   const lugar = match.location ? ` · ${match.location}` : "";
-  const readme = (proyecto?.readme ?? "Sin README disponible.").slice(0, 300);
+  const readmeLinea = proyecto?.readme ? "Disponible" : "Sin README disponible.";
   const tests = proyecto?.tiene_tests ? "sí" : "no";
   return [
     "── match encontrado ──────────────────",
     "",
     `@${match.github_login}${lugar}`,
     "",
-    "README:",
-    readme,
+    `README:    ${readmeLinea}`,
     "",
     `stack:     ${lineaStack(proyecto)}`,
     `tests:     ${tests}`,
@@ -649,6 +674,7 @@ function formatoMatch(
     `compatibilidad: ${barraCompat(puntaje)} ${puntaje}%`,
     "",
     "/mh connect   → enviar invitación",
+    "/mh read      → leer su README completo",
     "/mh search    → buscar otro",
     "──────────────────────────────────────",
   ].join("\n");

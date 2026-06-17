@@ -161,6 +161,22 @@ export async function detectarWorkspace(): Promise<Partial<Proyecto>> {
 
   resultado.dominio = dominio ?? 'otro';
   resultado.stack = [...stack].slice(0, 12);
+
+  // Leer README.md si existe en la raíz del workspace.
+  const readmeUris = await vscode.workspace.findFiles(
+    "{README.md,readme.md,Readme.md}",
+    "**/node_modules/**",
+    1,
+  );
+  if (readmeUris.length > 0) {
+    try {
+      const bytes = await vscode.workspace.fs.readFile(readmeUris[0]);
+      resultado.readme = Buffer.from(bytes).toString("utf8");
+    } catch {
+      // Si no se puede leer, se omite.
+    }
+  }
+
   return resultado;
 }
 
