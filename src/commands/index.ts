@@ -234,6 +234,11 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     if (yaPropuso) {
       await confirmarAmistad(yo.id, otroId);
       setAmigosCache([]);
+      await enviarMensajeSistema(conv.id, {
+        tipo: "amistad_confirmada",
+        de_usuario_id: yo.id,
+        de_username: yo.github_login,
+      });
       return [
         `  ✓ ahora tú y @${otroUsername} son amigos.`,
         "  pueden seguir hablando o escribir /mh leave para cerrar la conversación.",

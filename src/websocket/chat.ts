@@ -17,7 +17,7 @@ export type ManejadorMensaje = (mensaje: Mensaje) => void;
 const EVENTO = "mensaje";
 const EVENTO_SISTEMA = "sistema";
 
-export type TipoSistema = "amistad_propuesta" | "conversacion_cerrada";
+export type TipoSistema = "amistad_propuesta" | "amistad_confirmada" | "conversacion_cerrada";
 
 export interface MensajeSistema {
   tipo: TipoSistema;
@@ -126,7 +126,7 @@ export function iniciarChat(
       impresorMensajes(miId, otroUsername)(payload as Mensaje);
     })
     .on("broadcast", { event: EVENTO_SISTEMA }, ({ payload }) => {
-      manejarSistema(conversacion_id, payload as MensajeSistema);
+      manejarSistema(conversacion_id, otroUsername, payload as MensajeSistema);
     })
     .subscribe();
 
@@ -134,14 +134,24 @@ export function iniciarChat(
 }
 
 /** Maneja mensajes de sistema recibidos por el otro usuario. */
-function manejarSistema(conversacion_id: string, msg: MensajeSistema): void {
+function manejarSistema(
+  conversacion_id: string,
+  otroUsername: string,
+  msg: MensajeSistema,
+): void {
   // Con self:true el emisor también recibe su propio broadcast — lo ignoramos.
+  // El emisor ya ve la respuesta del comando; el receptor ve el broadcast.
   if (msg.de_usuario_id === getUsuarioActual()?.id) { return; }
 
   if (msg.tipo === "amistad_propuesta") {
     emitir([
       `  @${msg.de_username} quiere ser tu amigo.`,
       "  /mh add → confirmar amistad",
+    ].join("\n"));
+  } else if (msg.tipo === "amistad_confirmada") {
+    emitir([
+      `  ✓ tú y @${otroUsername} ahora son amigos.`,
+      "  pueden seguir hablando o escribir /mh leave para cerrar la conversación.",
     ].join("\n"));
   } else if (msg.tipo === "conversacion_cerrada") {
     emitir([
