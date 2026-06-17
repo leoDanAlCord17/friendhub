@@ -12,6 +12,8 @@ import {
   detectarWorkspace,
   crearOActualizarProyecto,
 } from "../supabase/proyectos";
+import { obtenerConversacionActiva } from "../supabase/conversaciones";
+import { iniciarChat } from "../websocket/chat";
 import { setUsuarioActual, cargarSesion } from "../state";
 
 /**
@@ -120,6 +122,16 @@ export async function iniciarLoginGithub(
   }
 
   await cargarSesion(usuario);
+
+  // Reconectar al canal de chat si había una conversación activa al momento del login.
+  if (usuario.conversacion_activa_id) {
+    const conv = await obtenerConversacionActiva(usuario.id);
+    if (conv) {
+      const otroId = conv.usuario_a === usuario.id ? conv.usuario_b : conv.usuario_a;
+      const otro = await obtenerUsuario(otroId);
+      iniciarChat(conv.id, usuario.id, otro?.github_login ?? otroId);
+    }
+  }
 
   // Primera vez: capturar la intención de búsqueda.
   if (usuario.busca === null || usuario.busca === undefined) {

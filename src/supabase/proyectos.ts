@@ -81,7 +81,7 @@ export async function detectarWorkspace(): Promise<Partial<Proyecto>> {
     lenguajes: [],
     stack: [],
     tiene_tests: false,
-    dominio: null,
+    dominio: 'otro',
   };
   if (!carpeta) {
     return resultado;
@@ -159,7 +159,7 @@ export async function detectarWorkspace(): Promise<Partial<Proyecto>> {
     }
   }
 
-  resultado.dominio = dominio;
+  resultado.dominio = dominio ?? 'otro';
   resultado.stack = [...stack].slice(0, 12);
   return resultado;
 }

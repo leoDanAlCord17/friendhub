@@ -76,7 +76,7 @@ export interface Amigo extends CamposControl {
   usuario_id: string;
   amigo_id: string;
   conversacion_id: string | null;
-  estado: "pendiente" | "confirmada";
+  estado: "pendiente" | "confirmado";
 }
 
 /** Tabla `descartados`. */

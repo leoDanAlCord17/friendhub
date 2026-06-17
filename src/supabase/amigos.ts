@@ -41,7 +41,7 @@ export async function confirmarAmistad(
 
   const { error: errUpdate } = await supabase
     .from(TABLA)
-    .update({ estado: 'confirmada', actualizado_en: ahora })
+    .update({ estado: 'confirmado', actualizado_en: ahora })
     .or(
       `and(usuario_id.eq.${usuario_a_id},amigo_id.eq.${usuario_b_id}),and(usuario_id.eq.${usuario_b_id},amigo_id.eq.${usuario_a_id})`,
     );
@@ -60,7 +60,7 @@ export async function confirmarAmistad(
     const { error: errInsert } = await supabase.from(TABLA).insert({
       usuario_id: usuario_b_id,
       amigo_id: usuario_a_id,
-      estado: 'confirmada',
+      estado: 'confirmado',
     });
     if (errInsert) {
       throw errInsert;
@@ -74,7 +74,7 @@ export async function obtenerAmigos(usuario_id: string): Promise<Amigo[]> {
     .from(TABLA)
     .select("*")
     .eq("usuario_id", usuario_id)
-    .eq("estado", 'confirmada')
+    .eq("estado", 'confirmado')
     .eq("estatus", true);
   if (error) {
     throw error;
