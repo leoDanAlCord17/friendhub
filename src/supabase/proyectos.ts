@@ -132,15 +132,31 @@ export async function detectarWorkspace(): Promise<Partial<Proyecto>> {
   );
   let dominio: string | null = null;
 
+  // Frameworks/libs reconocidos que vale la pena mostrar como stack.
+  const STACK_RECONOCIDO = [
+    "react", "next", "vue", "nuxt", "svelte", "astro", "angular",
+    "express", "fastify", "koa", "hapi", "nestjs",
+    "prisma", "drizzle", "typeorm", "mongoose",
+    "tailwindcss", "vite", "webpack", "esbuild",
+    "supabase", "firebase", "aws-sdk",
+    "jest", "vitest", "mocha", "playwright", "cypress",
+    "graphql", "trpc", "socket.io",
+    "electron", "tauri",
+  ];
+
   if (pkgUris.length > 0) {
     const deps = await leerDependenciasPackage(pkgUris[0]);
     for (const d of deps) {
-      stack.add(d);
+      // Solo incluir el paquete si está en la lista de reconocidos.
+      const nombre = d.replace(/^@[^/]+\//, ""); // quita scope (@nestjs/core → nestjs)
+      if (STACK_RECONOCIDO.some((r) => nombre === r || d === r)) {
+        stack.add(d.startsWith("@") ? nombre : d);
+      }
     }
-    if (deps.some((d) => /^(react|next|vue|@angular\/core|svelte)$/.test(d))) {
+    if (deps.some((d) => /^(react|next|vue|@angular\/core|svelte|astro|nuxt)$/.test(d))) {
       dominio = "web";
     }
-    if (deps.some((d) => /^(express|fastify|koa|@nestjs\/core)$/.test(d))) {
+    if (deps.some((d) => /^(express|fastify|koa|@nestjs\/core|hapi)$/.test(d))) {
       dominio = dominio ?? "backend";
     }
   }

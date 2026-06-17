@@ -135,6 +135,9 @@ export function iniciarChat(
 
 /** Maneja mensajes de sistema recibidos por el otro usuario. */
 function manejarSistema(conversacion_id: string, msg: MensajeSistema): void {
+  // Con self:true el emisor también recibe su propio broadcast — lo ignoramos.
+  if (msg.de_usuario_id === getUsuarioActual()?.id) { return; }
+
   if (msg.tipo === "amistad_propuesta") {
     emitir([
       `  @${msg.de_username} quiere ser tu amigo.`,
