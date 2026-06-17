@@ -4,9 +4,14 @@ import * as vscode from "vscode";
 import { Usuario } from "../types";
 import {
   obtenerUsuarioPorGithubId,
+  obtenerUsuario,
   crearUsuario,
   actualizarBusca,
 } from "../supabase/usuarios";
+import {
+  detectarWorkspace,
+  crearOActualizarProyecto,
+} from "../supabase/proyectos";
 import { setUsuarioActual, cargarSesion } from "../state";
 
 /**
@@ -96,6 +101,21 @@ export async function iniciarLoginGithub(
       estatus: true,
       creado_por: perfil.login,
       actualizado_por: perfil.login,
+    });
+  }
+
+  // Bug 1: siempre refresca el estado completo desde Supabase para que
+  // conversacion_activa_id y otros campos reflejen la BD, no la sesión anterior.
+  usuario = (await obtenerUsuario(usuario.id)) ?? usuario;
+
+  // Bug 2: persiste el workspace detectado para que buscarMatch() tenga datos reales.
+  const proyecto = await detectarWorkspace();
+  if (proyecto.lenguajes && proyecto.lenguajes.length > 0) {
+    await crearOActualizarProyecto({
+      ...proyecto,
+      usuario_id: usuario.id,
+      creado_por: usuario.github_login,
+      actualizado_por: usuario.github_login,
     });
   }
 

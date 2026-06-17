@@ -257,6 +257,8 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     const motivo = conv.usuario_a === yo.id ? "usuario_a_salio" : "usuario_b_salio";
     await cerrarConversacion(conv.id, motivo);
     await actualizarConversacionActiva(yo.id, null);
+    yo.conversacion_activa_id = null;
+    setUsuarioActual(yo);
     return "Has salido de la conversación.";
   },
 
@@ -515,7 +517,7 @@ function lineaStack(proyecto: Proyecto | null): string {
   if (!proyecto) {
     return "—";
   }
-  return [proyecto.lenguajes[0], proyecto.stack[0], proyecto.dominio]
+  return [proyecto.lenguajes?.[0], proyecto.stack?.[0], proyecto.dominio]
     .filter(Boolean)
     .join(" · ") || "—";
 }
@@ -601,8 +603,8 @@ function renderPostal(
 function tablaCompatibilidad(mio: Proyecto, suyo: Proyecto): string {
   const { puntaje } = calcularCompatibilidad(mio, suyo);
   const filas: Array<[string, string]> = [
-    [mio.lenguajes[0] ?? "—", suyo.lenguajes[0] ?? "—"],
-    [mio.stack[0] ?? "—", suyo.stack[0] ?? "—"],
+    [mio.lenguajes?.[0] ?? "—", suyo.lenguajes?.[0] ?? "—"],
+    [mio.stack?.[0] ?? "—", suyo.stack?.[0] ?? "—"],
     [mio.dominio ?? "—", suyo.dominio ?? "—"],
   ];
   const ancho = 15;

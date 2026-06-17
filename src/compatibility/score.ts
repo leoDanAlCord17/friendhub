@@ -40,7 +40,7 @@ export function calcularCompatibilidad(
 
 /** El lenguaje principal coincide (sin distinguir mayúsculas). */
 function lenguajeCoincide(a: Proyecto, b: Proyecto): boolean {
-  if (!a.lenguajes[0] || !b.lenguajes[0]) {
+  if (!a.lenguajes?.length || !b.lenguajes?.length) {
     return false;
   }
   return (
