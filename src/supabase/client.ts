@@ -2,17 +2,17 @@ import * as vscode from "vscode";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Cliente Supabase singleton de MeetHub.
+ * Cliente Supabase singleton de TermPals.
  *
  * Las credenciales se leen de la configuración de VS Code
- * (`meethub.supabaseUrl` / `meethub.supabaseAnonKey`) para que el usuario
+ * (`termpals.supabaseUrl` / `termpals.supabaseAnonKey`) para que el usuario
  * las defina en Settings sin quemarlas en el bundle de la extensión.
  */
 
 let cliente: SupabaseClient | null = null;
 
 function leerCredenciales(): { url: string; anonKey: string } {
-  const config = vscode.workspace.getConfiguration("meethub");
+  const config = vscode.workspace.getConfiguration("termpals");
   const url = config.get<string>("supabaseUrl", "").trim();
   const anonKey = config.get<string>("supabaseAnonKey", "").trim();
   return { url, anonKey };
@@ -25,7 +25,7 @@ export function getSupabase(): SupabaseClient {
     if (!url || !anonKey) {
       throw new Error(
         "Faltan credenciales de Supabase. Configúralas en Settings: " +
-          "meethub.supabaseUrl y meethub.supabaseAnonKey.",
+          "termpals.supabaseUrl y termpals.supabaseAnonKey.",
       );
     }
     cliente = createClient(url, anonKey, {

@@ -46,7 +46,7 @@ export default async function handler(req, res) {
         <body style="font-family:monospace;background:#1e1e1e;color:#e06c75;
         display:flex;align-items:center;justify-content:center;height:100vh;margin:0">
         <div style="text-align:center">
-          <h2>MeetHub</h2>
+          <h2>TermPals</h2>
           <p>Puedes cerrar esta pestaña y volver a VS Code.</p>
         </div>
         </body>
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
       `);
     }
 
-    const vscodeUrl = `vscode://leodanielalvarez.meethub/callback?access_token=${data.access_token}&state=${state ?? ''}`;
+    const vscodeUrl = `vscode://leodanielalvarez.TermPals/callback?access_token=${data.access_token}&state=${state ?? ''}`;
     res.redirect(302, vscodeUrl);
 
   } catch (error) {

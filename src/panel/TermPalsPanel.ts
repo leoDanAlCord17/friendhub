@@ -4,12 +4,12 @@ import { getUsuarioActual } from "../state";
 import { setEmisor } from "../output";
 
 /**
- * Proveedor del webview de MeetHub que vive en el panel inferior de VS Code
+ * Proveedor del webview de TermPals que vive en el panel inferior de VS Code
  * (junto a la Terminal). Renderiza una consola estilo terminal donde el
- * usuario escribe comandos `/mh` y recibe las respuestas.
+ * usuario escribe comandos `/tp` y recibe las respuestas.
  */
-export class MeetHubPanel implements vscode.WebviewViewProvider {
-  public static readonly viewType = "meethub.main";
+export class TermPalsPanel implements vscode.WebviewViewProvider {
+  public static readonly viewType = "termpals.main";
 
   private view?: vscode.WebviewView;
   private loginIntentado = false;
@@ -46,7 +46,7 @@ export class MeetHubPanel implements vscode.WebviewViewProvider {
             accion: respuesta.accion,
           });
         } else {
-          const esComando = msg.texto.startsWith("/mh") || msg.texto.startsWith("__BIO__:");
+          const esComando = msg.texto.startsWith("/tp") || msg.texto.startsWith("__BIO__:");
           const texto = respuesta ?? (esComando ? `comando no reconocido: ${msg.texto}` : null);
           if (texto !== null) {
             webviewView.webview.postMessage({ tipo: "salida", texto });
@@ -58,7 +58,7 @@ export class MeetHubPanel implements vscode.WebviewViewProvider {
     // Primer arranque sin sesión: dispara el login automáticamente.
     if (!this.loginIntentado && !getUsuarioActual()) {
       this.loginIntentado = true;
-      void vscode.commands.executeCommand("mh.login");
+      void vscode.commands.executeCommand("tp.login");
     }
   }
 
@@ -81,7 +81,7 @@ export class MeetHubPanel implements vscode.WebviewViewProvider {
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MeetHub</title>
+  <title>TermPals</title>
   <style>
     html, body {
       height: 100%;
@@ -144,7 +144,7 @@ export class MeetHubPanel implements vscode.WebviewViewProvider {
     <div id="prompt-fila">
       <span id="signo">&gt;</span>
       <input id="entrada" type="text" autocomplete="off" spellcheck="false"
-        placeholder="escribe un comando  /mh help" />
+        placeholder="escribe un comando  /tp help" />
     </div>
     <div id="hint"></div>
   </div>
@@ -155,11 +155,11 @@ export class MeetHubPanel implements vscode.WebviewViewProvider {
     const hint = document.getElementById('hint');
     const fila = document.getElementById('prompt-fila');
 
-    const PLACEHOLDER_NORMAL = 'escribe un comando  /mh help';
+    const PLACEHOLDER_NORMAL = 'escribe un comando  /tp help';
     const PLACEHOLDER_BIO = 'escribe tu bio aquí y presiona Enter...';
     let modoEdicion = false;
 
-    // Historial de comandos (solo entradas que empiezan con /mh).
+    // Historial de comandos (solo entradas que empiezan con /tp).
     const MAX_HISTORIAL = 50;
     let historialComandos = [];
     let indiceHistorial = -1;
@@ -175,16 +175,16 @@ export class MeetHubPanel implements vscode.WebviewViewProvider {
     function mostrarBienvenida() {
       imprimir([
         '╔═══════════════════════════════════════╗',
-        '║             M E E T H U B             ║',
+        '║            T E R M P A L S            ║',
         '║       conecta con otros devs          ║',
         '╚═══════════════════════════════════════╝',
         '',
         'v0.1.0  ·  hecho para devs, por devs',
         '',
         'para empezar:',
-        '  1. escribe /mh login     → conecta tu GitHub',
-        '  2. escribe /mh search    → busca un match',
-        '  3. escribe /mh help      → ver todos los comandos',
+        '  1. escribe /tp login     → conecta tu GitHub',
+        '  2. escribe /tp search    → busca un match',
+        '  3. escribe /tp help      → ver todos los comandos',
         '',
         '────────────────────────────────────────'
       ].join('\\n'), 'sistema');
@@ -212,7 +212,7 @@ export class MeetHubPanel implements vscode.WebviewViewProvider {
     }
 
     function agregarAlHistorial(texto) {
-      if (!texto.startsWith('/mh')) { return; }
+      if (!texto.startsWith('/tp')) { return; }
       if (historialComandos[historialComandos.length - 1] !== texto) {
         historialComandos.push(texto);
         if (historialComandos.length > MAX_HISTORIAL) {

@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { MeetHubPanel } from "./panel/MeetHubPanel";
+import { TermPalsPanel } from "./panel/TermPalsPanel";
 import {
   cerrarTodas,
   escucharInvitacionesEntrantes,
@@ -8,37 +8,37 @@ import { hayCredenciales } from "./supabase/client";
 import { iniciarLoginGithub, manejarCallback } from "./auth/github";
 
 /**
- * Punto de entrada de la extensión MeetHub.
+ * Punto de entrada de la extensión TermPals.
  *
  * Registra el webview del panel inferior, el comando `mh.open` y el comando
  * `mh.login` que ejecuta el flujo de GitHub OAuth.
  */
 export function activate(context: vscode.ExtensionContext): void {
-  const proveedor = new MeetHubPanel(context.extensionUri);
+  const proveedor = new TermPalsPanel(context.extensionUri);
 
   if (!hayCredenciales()) {
     void vscode.window.showWarningMessage(
-      "MeetHub: configura meethub.supabaseUrl y meethub.supabaseAnonKey en Settings para empezar.",
+      "TermPals: configura termpals.supabaseUrl y termpals.supabaseAnonKey en Settings para empezar.",
     );
   }
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
-      MeetHubPanel.viewType,
+      TermPalsPanel.viewType,
       proveedor,
       { webviewOptions: { retainContextWhenHidden: true } },
     ),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("mh.open", async () => {
-      await vscode.commands.executeCommand("meethub.main.focus");
+    vscode.commands.registerCommand("tp.open", async () => {
+      await vscode.commands.executeCommand("termpals.main.focus");
       proveedor.mostrar();
     }),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("mh.login", async () => {
+    vscode.commands.registerCommand("tp.login", async () => {
       try {
         const usuario = await iniciarLoginGithub(context);
         proveedor.imprimir(`Sesión iniciada como @${usuario.github_login}`);
@@ -46,12 +46,12 @@ export function activate(context: vscode.ExtensionContext): void {
       } catch (err) {
         const msg = (err as Error).message;
         proveedor.imprimir(`Error de login: ${msg}`);
-        void vscode.window.showErrorMessage(`MeetHub: ${msg}`);
+        void vscode.window.showErrorMessage(`TermPals: ${msg}`);
       }
     }),
   );
 
-  // Recibe el callback de GitHub OAuth (URI vscode://leodanielalvarez.meethub/callback).
+  // Recibe el callback de GitHub OAuth (URI vscode://leodanielalvarez.TermPals/callback).
   context.subscriptions.push(
     vscode.window.registerUriHandler({
       handleUri(uri: vscode.Uri) {

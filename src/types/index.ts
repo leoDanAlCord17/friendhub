@@ -1,5 +1,5 @@
 /**
- * Tipos compartidos de MeetHub.
+ * Tipos compartidos de TermPals.
  *
  * Las interfaces de tablas reflejan exactamente el esquema de Supabase.
  * Todas incluyen los campos de control estándar (ver {@link CamposControl}).
@@ -109,8 +109,8 @@ export interface ResultadoCompatibilidad {
   };
 }
 
-/** Comandos `/mh` disponibles en el chat. */
-export type ComandoMh =
+/** Comandos `/tp` disponibles en el chat. */
+export type ComandoTp =
   | "login"
   | "search"
   | "friends"

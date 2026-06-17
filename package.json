@@ -1,6 +1,6 @@
 {
-  "name": "meethub",
-  "displayName": "MeetHub",
+  "name": "termpals",
+  "displayName": "TermPals",
   "description": "Conecta con otros desarrolladores desde el panel inferior de VS Code.",
   "version": "0.0.1",
   "publisher": "leodanielalvarez",
@@ -27,53 +27,53 @@
     ],
     "commands": [
       {
-        "command": "mh.open",
-        "title": "MeetHub: Abrir panel",
-        "category": "MeetHub"
+        "command": "tp.open",
+        "title": "TermPals: Abrir panel",
+        "category": "TermPals"
       },
       {
-        "command": "mh.login",
-        "title": "MeetHub: Iniciar sesión con GitHub",
-        "category": "MeetHub"
+        "command": "tp.login",
+        "title": "TermPals: Iniciar sesión con GitHub",
+        "category": "TermPals"
       }
     ],
     "viewsContainers": {
       "panel": [
         {
-          "id": "meethub",
-          "title": "MeetHub",
+          "id": "termpals",
+          "title": "TermPals",
           "icon": "$(organization)"
         }
       ]
     },
     "views": {
-      "meethub": [
+      "termpals": [
         {
-          "id": "meethub.main",
-          "name": "MeetHub",
+          "id": "termpals.main",
+          "name": "termpals",
           "type": "webview"
         }
       ]
     },
     "configuration": {
-      "title": "MeetHub",
+      "title": "TermPals",
       "properties": {
-        "meethub.supabaseUrl": {
+        "termpals.supabaseUrl": {
           "type": "string",
           "default": "",
           "description": "URL de tu proyecto Supabase"
         },
-        "meethub.supabaseAnonKey": {
+        "termpals.supabaseAnonKey": {
           "type": "string",
           "default": "",
           "description": "Anon key de tu proyecto Supabase"
         },
-        "meethub.githubClientId": {
+        "termpals.githubClientId": {
           "type": "string",
           "default": "",
           "description": "Client ID de tu GitHub OAuth App"
         },
-        "meethub.githubClientSecret": {
+        "termpals.githubClientSecret": {
           "type": "string",
           "default": "",
           "description": "Client Secret de tu GitHub OAuth App"

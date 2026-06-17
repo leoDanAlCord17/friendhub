@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import {
-  ComandoMh,
+  ComandoTp,
   ComandoHandler,
   ResultadoComando,
   Proyecto,
@@ -40,21 +40,21 @@ import { calcularCompatibilidad } from "../compatibility/score";
 import { escucharInvitaciones, iniciarChat, enviarMensaje, enviarMensajeSistema } from "../websocket/chat";
 
 /**
- * Registro de los comandos `/mh` del chat de MeetHub. Cada handler recibe
- * los argumentos (sin el `/mh <comando>`) y devuelve el texto a renderizar.
+ * Registro de los comandos `/tp` del chat de TermPals. Cada handler recibe
+ * los argumentos (sin el `/tp <comando>`) y devuelve el texto a renderizar.
  */
 
-const handlers: Record<ComandoMh, ComandoHandler> = {
-  /** /mh login — inicia el flujo de GitHub OAuth. */
+const handlers: Record<ComandoTp, ComandoHandler> = {
+  /** /tp login — inicia el flujo de GitHub OAuth. */
   login: async () => {
     if (getUsuarioActual()) {
       return `  ya tienes sesión como @${getUsuarioActual()?.github_login}.`;
     }
-    await vscode.commands.executeCommand("mh.login");
+    await vscode.commands.executeCommand("tp.login");
     return "  abriendo el navegador para conectar tu GitHub...";
   },
 
-  /** /mh search — busca un desarrollador compatible disponible. */
+  /** /tp search — busca un desarrollador compatible disponible. */
   search: async () => {
     const base = requiereUsuario();
     if (typeof base === "string") {
@@ -63,7 +63,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     const yo = await refrescarUsuario(base);
     const activa = await obtenerConversacionActiva(yo.id);
     if (activa) {
-      return "Ya tienes una conversación activa. Usa /mh leave para salir.";
+      return "Ya tienes una conversación activa. Usa /tp leave para salir.";
     }
 
     const miStack = await detectarWorkspace();
@@ -95,7 +95,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     return postal + formatoMatch(match, proyectoMatch, puntaje);
   },
 
-  /** /mh friends — lista tus amigos confirmados con su stack. */
+  /** /tp friends — lista tus amigos confirmados con su stack. */
   friends: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -113,7 +113,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
       setAmigosCache(amigos);
     }
     if (amigos.length === 0) {
-      return "  aún no tienes amigos. usa /mh search para conocer devs.";
+      return "  aún no tienes amigos. usa /tp search para conocer devs.";
     }
 
     const cuerpo = amigos
@@ -126,12 +126,12 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
       cuerpo,
       "",
       `  total: ${amigos.length} amigo${amigos.length === 1 ? "" : "s"}`,
-      "  usa /mh invite @username para iniciar chat",
+      "  usa /tp invite @username para iniciar chat",
       "  ──────────────────────────────────────",
     ].join("\n");
   },
 
-  /** /mh invite @username — invita a un amigo guardado a chatear. */
+  /** /tp invite @username — invita a un amigo guardado a chatear. */
   invite: async (args) => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -139,7 +139,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     }
     const username = (args[0] ?? "").replace(/^@/, "");
     if (!username) {
-      return "Uso: /mh invite @username";
+      return "Uso: /tp invite @username";
     }
 
     const amigos = await obtenerAmigos(yo.id);
@@ -153,7 +153,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
 
     const activa = await obtenerConversacionActiva(yo.id);
     if (activa) {
-      return "  ya tienes una conversación activa. usa /mh leave para salir primero.";
+      return "  ya tienes una conversación activa. usa /tp leave para salir primero.";
     }
 
     const [miProyecto, proyectoAmigo] = await Promise.all([
@@ -180,10 +180,10 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     ].join("\n");
   },
 
-  /** /mh help — muestra los comandos disponibles. */
+  /** /tp help — muestra los comandos disponibles. */
   help: async () => textoAyuda(),
 
-  /** /mh status — resumen de sesión, workspace y conexiones. */
+  /** /tp status — resumen de sesión, workspace y conexiones. */
   status: async () => {
     const base = requiereUsuario();
     if (typeof base === "string") {
@@ -215,7 +215,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     ].join("\n");
   },
 
-  /** /mh add <usuario> — propone amistad en la conversación activa. */
+  /** /tp add <usuario> — propone amistad en la conversación activa. */
   add: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -241,7 +241,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
       });
       return [
         `  ✓ ahora tú y @${otroUsername} son amigos.`,
-        "  pueden seguir hablando o escribir /mh leave para cerrar la conversación.",
+        "  pueden seguir hablando o escribir /tp leave para cerrar la conversación.",
       ].join("\n");
     }
 
@@ -252,10 +252,10 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
       de_usuario_id: yo.id,
       de_username: yo.github_login,
     });
-    return `  propuesta de amistad enviada a @${otroUsername}. esperando que él también escriba /mh add.`;
+    return `  propuesta de amistad enviada a @${otroUsername}. esperando que él también escriba /tp add.`;
   },
 
-  /** /mh leave — cierra la conversación activa. */
+  /** /tp leave — cierra la conversación activa. */
   leave: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -279,7 +279,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     return "Has salido de la conversación.";
   },
 
-  /** /mh readme — muestra el README completo del proyecto del match. */
+  /** /tp readme — muestra el README completo del proyecto del match. */
   readme: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -297,7 +297,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     return proyecto.readme;
   },
 
-  /** /mh read — muestra el README completo del match actual (antes de aceptar). */
+  /** /tp read — muestra el README completo del match actual (antes de aceptar). */
   read: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -305,7 +305,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     }
     const match = getMatchActual();
     if (!match) {
-      return "  no hay match activo. usa /mh search primero.";
+      return "  no hay match activo. usa /tp search primero.";
     }
     const proyecto = await obtenerProyectoActivo(match.usuario.id);
     if (!proyecto?.readme) {
@@ -317,12 +317,12 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
       proyecto.readme,
       "",
       "──────────────────────────────────────",
-      "/mh connect   → enviar invitación",
-      "/mh search    → buscar otro",
+      "/tp connect   → enviar invitación",
+      "/tp search    → buscar otro",
     ].join("\n");
   },
 
-  /** /mh stack — barra de compatibilidad con el match de la conversación. */
+  /** /tp stack — barra de compatibilidad con el match de la conversación. */
   stack: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -343,7 +343,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     return tablaCompatibilidad(mio, suyo);
   },
 
-  /** /mh profile [edit] — muestra tu postal o activa la edición de la bio. */
+  /** /tp profile [edit] — muestra tu postal o activa la edición de la bio. */
   profile: async (args) => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -355,15 +355,15 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
 
     const proyecto = getProyectoActual();
     const postal = renderPostal(yo.github_login, yo.location, yo.bio, proyecto);
-    return `${postal}\n\n  /mh profile edit → escribir tu bio`;
+    return `${postal}\n\n  /tp profile edit → escribir tu bio`;
   },
 
-  /** /mh clear — limpia la pantalla del panel. */
+  /** /tp clear — limpia la pantalla del panel. */
   clear: async () => {
     return { accion: "clear" };
   },
 
-  /** /mh connect — envía la invitación al match actual. */
+  /** /tp connect — envía la invitación al match actual. */
   connect: async () => {
     const base = requiereUsuario();
     if (typeof base === "string") {
@@ -371,11 +371,11 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     }
     const match = getMatchActual();
     if (!match) {
-      return "  no hay match activo. usa /mh search primero.";
+      return "  no hay match activo. usa /tp search primero.";
     }
     const yo = await refrescarUsuario(base);
     if (yo.conversacion_activa_id) {
-      return "  ya tienes una conversación activa. usa /mh leave para salir primero.";
+      return "  ya tienes una conversación activa. usa /tp leave para salir primero.";
     }
 
     const miProyecto = await obtenerProyectoActivo(yo.id);
@@ -400,7 +400,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     ].join("\n");
   },
 
-  /** /mh accept — acepta la invitación pendiente. */
+  /** /tp accept — acepta la invitación pendiente. */
   accept: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -427,11 +427,11 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     return [
       `  ✓ aceptaste la invitación de @${pend.username}.`,
       "  conversación iniciada.",
-      "  escribe /mh stack para ver la compatibilidad.",
+      "  escribe /tp stack para ver la compatibilidad.",
     ].join("\n");
   },
 
-  /** /mh reject — rechaza la invitación pendiente. */
+  /** /tp reject — rechaza la invitación pendiente. */
   reject: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
@@ -448,13 +448,13 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
 };
 
 /** Lista de comandos válidos. */
-export const COMANDOS: ComandoMh[] = Object.keys(handlers) as ComandoMh[];
+export const COMANDOS: ComandoTp[] = Object.keys(handlers) as ComandoTp[];
 
 /** Prefijo con el que el panel envía el texto de la bio en modo edición. */
 const PREFIJO_BIO = "__BIO__:";
 
 /**
- * Parsea y ejecuta una línea de chat (p. ej. `"/mh invite alice"`).
+ * Parsea y ejecuta una línea de chat (p. ej. `"/tp invite alice"`).
  * Devuelve `null` si la línea no es un comando ni una entrada de bio.
  */
 export async function ejecutarComando(
@@ -487,7 +487,7 @@ export async function ejecutarComando(
   }
 
   const partes = linea.trim().split(/\s+/);
-  if (partes[0] !== "/mh") {
+  if (partes[0] !== "/tp") {
     const yo = getUsuarioActual();
     if (yo?.conversacion_activa_id) {
       try {
@@ -497,11 +497,11 @@ export async function ejecutarComando(
       }
       return null;
     }
-    return "comando no reconocido. escribe /mh help para ver los comandos.";
+    return "comando no reconocido. escribe /tp help para ver los comandos.";
   }
-  const nombre = partes[1] as ComandoMh | undefined;
+  const nombre = partes[1] as ComandoTp | undefined;
   if (!nombre || !(nombre in handlers)) {
-    return "Comando desconocido. Escribe /mh help.";
+    return "Comando desconocido. Escribe /tp help.";
   }
   try {
     return await handlers[nombre](partes.slice(2));
@@ -534,22 +534,22 @@ async function refrescarUsuario(yo: Usuario): Promise<Usuario> {
 
 function textoAyuda(): string {
   return [
-    "Comandos de MeetHub:",
-    "  /mh search           Busca desarrolladores compatibles",
-    "  /mh connect          Envía invitación al match actual",
-    "  /mh accept           Acepta la invitación pendiente",
-    "  /mh reject           Rechaza la invitación pendiente",
-    "  /mh friends          Lista tus amigos",
-    "  /mh invite <usuario> Invita a colaborar",
-    "  /mh add              Propone amistad al usuario de la conversación activa",
-    "  /mh status           Muestra el stack detectado de tu workspace",
-    "  /mh stack            Compara tu stack con el de tu match",
-    "  /mh leave            Cierra la conversación actual",
-    "  /mh read             Lee el README completo del match (antes de conectar)",
-    "  /mh readme           Muestra el README del match en conversación activa",
-    "  /mh profile          Muestra tu postal de presentación",
-    "  /mh clear            Limpia la pantalla",
-    "  /mh help             Muestra esta ayuda",
+    "Comandos de TermPals:",
+    "  /tp search           Busca desarrolladores compatibles",
+    "  /tp connect          Envía invitación al match actual",
+    "  /tp accept           Acepta la invitación pendiente",
+    "  /tp reject           Rechaza la invitación pendiente",
+    "  /tp friends          Lista tus amigos",
+    "  /tp invite <usuario> Invita a colaborar",
+    "  /tp add              Propone amistad al usuario de la conversación activa",
+    "  /tp status           Muestra el stack detectado de tu workspace",
+    "  /tp stack            Compara tu stack con el de tu match",
+    "  /tp leave            Cierra la conversación actual",
+    "  /tp read             Lee el README completo del match (antes de conectar)",
+    "  /tp readme           Muestra el README del match en conversación activa",
+    "  /tp profile          Muestra tu postal de presentación",
+    "  /tp clear            Limpia la pantalla",
+    "  /tp help             Muestra esta ayuda",
   ].join("\n");
 }
 
@@ -669,7 +669,7 @@ function tablaCompatibilidad(mio: Proyecto, suyo: Proyecto): string {
   ].join("\n");
 }
 
-/** Tarjeta de resultado de /mh search. */
+/** Tarjeta de resultado de /tp search. */
 function formatoMatch(
   match: Usuario,
   proyecto: Proyecto | null,
@@ -690,9 +690,9 @@ function formatoMatch(
     "",
     `compatibilidad: ${barraCompat(puntaje)} ${puntaje}%`,
     "",
-    "/mh connect   → enviar invitación",
-    "/mh read      → leer su README completo",
-    "/mh search    → buscar otro",
+    "/tp connect   → enviar invitación",
+    "/tp read      → leer su README completo",
+    "/tp search    → buscar otro",
     "──────────────────────────────────────",
   ].join("\n");
 }

@@ -3,7 +3,7 @@ import { obtenerProyectoActivo } from "./supabase/proyectos";
 import { obtenerAmigos } from "./supabase/amigos";
 import { obtenerUsuario } from "./supabase/usuarios";
 
-/** Match propuesto al usuario (resultado de /mh search). */
+/** Match propuesto al usuario (resultado de /tp search). */
 export interface MatchActual {
   usuario: Usuario;
   proyecto: Proyecto | null;
@@ -17,8 +17,8 @@ export interface InvitacionPendiente {
 }
 
 /**
- * Estado de sesión en memoria de MeetHub. Lo puebla la extensión tras el
- * login de GitHub y lo consultan los comandos `/mh`.
+ * Estado de sesión en memoria de TermPals. Lo puebla la extensión tras el
+ * login de GitHub y lo consultan los comandos `/tp`.
  */
 interface EstadoSesion {
   usuario: Usuario | null;

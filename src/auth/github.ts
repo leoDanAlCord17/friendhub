@@ -17,12 +17,12 @@ import { iniciarChat } from "../websocket/chat";
 import { setUsuarioActual, cargarSesion } from "../state";
 
 /**
- * Flujo de GitHub OAuth para MeetHub a través de un endpoint serverless en
+ * Flujo de GitHub OAuth para TermPals a través de un endpoint serverless en
  * Vercel.
  *
  * GitHub redirige a `https://friendhub-six.vercel.app/api/callback`, que
  * intercambia el `code` por el `access_token` (el client secret vive en Vercel,
- * nunca en el cliente) y reenvía a `vscode://leodanielalvarez.meethub/callback`
+ * nunca en el cliente) y reenvía a `vscode://leodanielalvarez.termpals/callback`
  * con el `access_token` y el `state` en los query params. VS Code entrega ese
  * URI a la extensión vía `registerUriHandler`; aquí validamos el `state` y
  * usamos el token directamente.
@@ -32,7 +32,7 @@ import { setUsuarioActual, cargarSesion } from "../state";
 const REDIRECT_URI = "https://friendhub-six.vercel.app/api/callback";
 const SCOPES = "read:user user:email";
 const TIMEOUT_MS = 120_000;
-const STATE_KEY = "meethub.oauthState";
+const STATE_KEY = "termpals.oauthState";
 
 /** Resultado que el UriHandler entrega al login en curso. */
 type ResultadoCallback = { token: string } | { error: string };
@@ -55,10 +55,10 @@ interface PerfilGithub {
  * URL de autorización.
  */
 function leerClientId(): string {
-  const config = vscode.workspace.getConfiguration("meethub");
+  const config = vscode.workspace.getConfiguration("termpals");
   const clientId = config.get<string>("githubClientId", "").trim();
   if (!clientId) {
-    throw new Error("Configura meethub.githubClientId en Settings.");
+    throw new Error("Configura termpals.githubClientId en Settings.");
   }
   return clientId;
 }
@@ -82,7 +82,6 @@ export async function iniciarLoginGithub(
 
   // Suscribirse ANTES de abrir el browser para no perder el callback.
   const promesaToken = esperarCallback();
-  console.log('URL que se va a abrir:', authUrl);
   await vscode.env.openExternal(vscode.Uri.parse(authUrl));
   const accessToken = await promesaToken;
 
@@ -154,8 +153,8 @@ async function preguntarBusca(): Promise<
   const eleccion = await vscode.window.showQuickPick(
     [COLABORAR, NETWORKING, AMBAS],
     {
-      title: "¿Qué buscas en MeetHub?",
-      placeHolder: "¿Qué buscas en MeetHub?",
+      title: "¿Qué buscas en TermPals?",
+      placeHolder: "¿Qué buscas en TermPals?",
       ignoreFocusOut: true,
     },
   );
@@ -226,7 +225,7 @@ function httpGet(
       hostname: u.hostname,
       path: u.pathname + u.search,
       method: "GET",
-      headers: { "User-Agent": "MeetHub", ...headers },
+      headers: { "User-Agent": "TermPals", ...headers },
     };
     const req = https.get(opciones, (res) => {
       let datos = "";
@@ -244,7 +243,7 @@ async function obtenerPerfil(token: string): Promise<PerfilGithub> {
   try {
     cuerpo = await httpGet("https://api.github.com/user", {
       Authorization: `token ${token}`,
-      "User-Agent": "MeetHub",
+      "User-Agent": "TermPals",
       Accept: "application/vnd.github+json",
     });
   } catch (err) {

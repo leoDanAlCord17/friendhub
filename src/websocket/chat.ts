@@ -146,18 +146,18 @@ function manejarSistema(
   if (msg.tipo === "amistad_propuesta") {
     emitir([
       `  @${msg.de_username} quiere ser tu amigo.`,
-      "  /mh add → confirmar amistad",
+      "  /tp add → confirmar amistad",
     ].join("\n"));
   } else if (msg.tipo === "amistad_confirmada") {
     emitir([
       `  ✓ tú y @${otroUsername} ahora son amigos.`,
-      "  pueden seguir hablando o escribir /mh leave para cerrar la conversación.",
+      "  pueden seguir hablando o escribir /tp leave para cerrar la conversación.",
     ].join("\n"));
   } else if (msg.tipo === "conversacion_cerrada") {
     emitir([
       `  @${msg.de_username} cerró la conversación.`,
       "  ya no puedes enviar mensajes.",
-      `  /mh invite @${msg.de_username} → invitarlo de nuevo`,
+      `  /tp invite @${msg.de_username} → invitarlo de nuevo`,
     ].join("\n"));
     const yo = getUsuarioActual();
     if (yo) {
@@ -221,7 +221,7 @@ export function escucharInvitaciones(
           iniciarChat(convId, miId, otroUsername);
           emitir(`  ✓ @${otroUsername} aceptó tu invitación.`);
           emitir("  conversación iniciada.");
-          emitir("  escribe /mh stack para ver la compatibilidad.");
+          emitir("  escribe /tp stack para ver la compatibilidad.");
           cerrarCanalInvitacion(clave);
         } else if (estado === "rechazada") {
           emitir(`  @${otroUsername} no está disponible ahora.`);
@@ -238,7 +238,7 @@ export function escucharInvitaciones(
 
 /**
  * Escucha las invitaciones entrantes (INSERT) dirigidas al usuario actual e
- * imprime la tarjeta con las opciones /mh accept y /mh reject.
+ * imprime la tarjeta con las opciones /tp accept y /tp reject.
  */
 export function escucharInvitacionesEntrantes(
   usuario_id: string,
@@ -273,8 +273,8 @@ export function escucharInvitacionesEntrantes(
               "  ── nueva conversación ────────────────",
               `  @${username} quiere iniciar una conversación contigo.`,
               "  ",
-              "  /mh accept   → aceptar",
-              "  /mh reject   → rechazar",
+              "  /tp accept   → aceptar",
+              "  /tp reject   → rechazar",
               "  ──────────────────────────────────────",
             ].join("\n"),
           );
@@ -290,8 +290,8 @@ export function escucharInvitacionesEntrantes(
               "  ",
               `  compatibilidad: ${barra10(invit.puntaje)} ${invit.puntaje}%`,
               "  ",
-              "  /mh accept   → aceptar",
-              "  /mh reject   → rechazar",
+              "  /tp accept   → aceptar",
+              "  /tp reject   → rechazar",
               "  ──────────────────────────────────────",
             ].join("\n"),
           );
