@@ -37,7 +37,7 @@ import {
   responderInvitacion,
 } from "../supabase/invitaciones";
 import { calcularCompatibilidad } from "../compatibility/score";
-import { escucharInvitaciones, iniciarChat } from "../websocket/chat";
+import { escucharInvitaciones, iniciarChat, enviarMensaje } from "../websocket/chat";
 
 /**
  * Registro de los comandos `/mh` del chat de MeetHub. Cada handler recibe
@@ -438,7 +438,16 @@ export async function ejecutarComando(
 
   const partes = linea.trim().split(/\s+/);
   if (partes[0] !== "/mh") {
-    return null;
+    const yo = getUsuarioActual();
+    if (yo?.conversacion_activa_id) {
+      try {
+        await enviarMensaje(yo.conversacion_activa_id, linea, yo.id);
+      } catch (err) {
+        return `Error al enviar mensaje: ${(err as Error).message}`;
+      }
+      return null;
+    }
+    return "comando no reconocido. escribe /mh help para ver los comandos.";
   }
   const nombre = partes[1] as ComandoMh | undefined;
   if (!nombre || !(nombre in handlers)) {
