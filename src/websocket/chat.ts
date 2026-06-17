@@ -1,11 +1,7 @@
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabase } from "../supabase/client";
 import { Invitacion, Mensaje } from "../types";
-import { crearConversacion } from "../supabase/conversaciones";
-import {
-  actualizarConversacionActiva,
-  obtenerUsuario,
-} from "../supabase/usuarios";
+import { obtenerUsuario } from "../supabase/usuarios";
 import { setMatchActual, setInvitacionPendiente, getUsuarioActual, setUsuarioActual } from "../state";
 import { emitir } from "../output";
 
@@ -124,9 +120,9 @@ export function iniciarChat(
 export function escucharInvitaciones(
   invitacionId: string,
   miId: string,
-  otroId: string,
+  _otroId: string,
   otroUsername: string,
-  puntaje: number,
+  _puntaje: number,
 ): RealtimeChannel {
   const clave = `inv-out:${invitacionId}`;
   cerrarCanalInvitacion(clave);
@@ -144,15 +140,15 @@ export function escucharInvitaciones(
       async ({ new: fila }) => {
         const estado = (fila as Invitacion).estado;
         if (estado === "aceptada") {
-          const conv = await crearConversacion(miId, otroId, puntaje);
-          await actualizarConversacionActiva(miId, conv.id);
-          await actualizarConversacionActiva(otroId, conv.id);
+          // conversacion_id viene en el mismo payload del evento — sin race condition.
+          const convId = (fila as Invitacion).conversacion_id;
+          if (!convId) { return; }
           const yo = getUsuarioActual();
           if (yo) {
-            yo.conversacion_activa_id = conv.id;
+            yo.conversacion_activa_id = convId;
             setUsuarioActual(yo);
           }
-          iniciarChat(conv.id, miId, otroUsername);
+          iniciarChat(convId, miId, otroUsername);
           emitir(`  ✓ @${otroUsername} aceptó tu invitación.`);
           emitir("  conversación iniciada.");
           emitir("  escribe /mh stack para ver la compatibilidad.");

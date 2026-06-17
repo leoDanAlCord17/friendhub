@@ -46,10 +46,11 @@ export class MeetHubPanel implements vscode.WebviewViewProvider {
             accion: respuesta.accion,
           });
         } else {
-          webviewView.webview.postMessage({
-            tipo: "salida",
-            texto: respuesta ?? `comando no reconocido: ${msg.texto}`,
-          });
+          const esComando = msg.texto.startsWith("/mh") || msg.texto.startsWith("__BIO__:");
+          const texto = respuesta ?? (esComando ? `comando no reconocido: ${msg.texto}` : null);
+          if (texto !== null) {
+            webviewView.webview.postMessage({ tipo: "salida", texto });
+          }
         }
       }
     });

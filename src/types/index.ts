@@ -65,6 +65,7 @@ export interface Invitacion extends CamposControl {
   de_usuario: string;
   para_usuario: string;
   proyecto_id: string | null;
+  conversacion_id: string | null;
   mensaje: string | null;
   readme: string | null;
   puntaje: number;

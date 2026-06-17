@@ -368,7 +368,6 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     if (!pend) {
       return "  no tienes invitaciones pendientes.";
     }
-    await responderInvitacion(pend.invitacion.id, "aceptada");
     const conv = await crearConversacion(
       pend.invitacion.de_usuario,
       yo.id,
@@ -376,6 +375,9 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     );
     await actualizarConversacionActiva(pend.invitacion.de_usuario, conv.id);
     await actualizarConversacionActiva(yo.id, conv.id);
+    // El conversacion_id viaja en el payload del evento Realtime para que
+    // el invitador lo use directamente sin race condition.
+    await responderInvitacion(pend.invitacion.id, "aceptada", conv.id);
     yo.conversacion_activa_id = conv.id;
     setUsuarioActual(yo);
     iniciarChat(conv.id, yo.id, pend.username);

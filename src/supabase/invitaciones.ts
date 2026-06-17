@@ -31,10 +31,18 @@ export async function crearInvitacion(
 export async function responderInvitacion(
   id: string,
   respuesta: "aceptada" | "rechazada",
+  conversacion_id?: string,
 ): Promise<Invitacion> {
+  const cambios: Record<string, unknown> = {
+    estado: respuesta,
+    actualizado_en: new Date().toISOString(),
+  };
+  if (conversacion_id) {
+    cambios.conversacion_id = conversacion_id;
+  }
   const { data, error } = await getSupabase()
     .from(TABLA)
-    .update({ estado: respuesta, actualizado_en: new Date().toISOString() })
+    .update(cambios)
     .eq("id", id)
     .select("*")
     .single();
