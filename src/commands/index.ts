@@ -26,7 +26,7 @@ import {
   obtenerUsuario,
   obtenerUsuarioPorGithubId,
 } from "../supabase/usuarios";
-import { obtenerAmigos, proponerAmistad } from "../supabase/amigos";
+import { obtenerAmigos, proponerAmistad, confirmarAmistad, existeSolicitudPendiente } from "../supabase/amigos";
 import {
   obtenerConversacionActiva,
   cerrarConversacion,
@@ -226,22 +226,38 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
   },
 
   /** /mh add <usuario> — propone amistad en la conversación activa. */
-  add: async (args) => {
+  add: async () => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
       return yo;
     }
-    const destino = args[0];
-    if (!destino) {
-      return "Uso: /mh add <usuario>";
-    }
     const conv = await obtenerConversacionActiva(yo.id);
     if (!conv) {
-      return "No tienes una conversación activa para proponer amistad.";
+      return "  no tienes una conversación activa.";
     }
-    await proponerAmistad(yo.id, destino, conv.id);
-    setAmigosCache([]); // invalida el caché → refetch en el próximo /mh friends
-    return `Propuesta de amistad enviada a ${destino}.`;
+    const otroId = conv.usuario_a === yo.id ? conv.usuario_b : conv.usuario_a;
+    const otro = await obtenerUsuario(otroId);
+    const otroUsername = otro?.github_login ?? otroId;
+
+    // Si el otro ya envió solicitud, confirmamos la amistad.
+    const yaPropuso = await existeSolicitudPendiente(otroId, yo.id);
+    if (yaPropuso) {
+      await confirmarAmistad(yo.id, otroId);
+      await cerrarConversacion(conv.id, "ambos_amigos");
+      await actualizarConversacionActiva(yo.id, null);
+      yo.conversacion_activa_id = null;
+      setUsuarioActual(yo);
+      setAmigosCache([]);
+      return [
+        `  ✓ ahora tú y @${otroUsername} son amigos.`,
+        "  la conversación se cerró.",
+        "  usa /mh friends para ver tu lista de amigos.",
+      ].join("\n");
+    }
+
+    // Si no, registramos nuestra solicitud y esperamos.
+    await proponerAmistad(yo.id, otroId, conv.id);
+    return `  propuesta de amistad enviada a @${otroUsername}. esperando que él también escriba /mh add.`;
   },
 
   /** /mh leave — cierra la conversación activa. */
@@ -524,7 +540,7 @@ function textoAyuda(): string {
     "  /mh reject           Rechaza la invitación pendiente",
     "  /mh friends          Lista tus amigos",
     "  /mh invite <usuario> Invita a colaborar",
-    "  /mh add <usuario>    Propone amistad en la conversación actual",
+    "  /mh add              Propone amistad al usuario de la conversación activa",
     "  /mh status           Muestra el stack detectado de tu workspace",
     "  /mh stack            Compara tu stack con el de tu match",
     "  /mh leave            Cierra la conversación actual",

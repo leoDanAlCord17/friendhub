@@ -68,6 +68,21 @@ export async function confirmarAmistad(
   }
 }
 
+/** Verifica si existe una solicitud pendiente de usuario_a hacia usuario_b. */
+export async function existeSolicitudPendiente(
+  de_usuario_id: string,
+  para_usuario_id: string,
+): Promise<boolean> {
+  const { data } = await getSupabase()
+    .from(TABLA)
+    .select("id")
+    .eq("usuario_id", de_usuario_id)
+    .eq("amigo_id", para_usuario_id)
+    .eq("estado", "pendiente")
+    .maybeSingle();
+  return data !== null;
+}
+
 /** Lista los amigos confirmados de un usuario. */
 export async function obtenerAmigos(usuario_id: string): Promise<Amigo[]> {
   const { data, error } = await getSupabase()
