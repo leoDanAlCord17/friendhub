@@ -6,7 +6,7 @@ import {
   actualizarConversacionActiva,
   obtenerUsuario,
 } from "../supabase/usuarios";
-import { setMatchActual, setInvitacionPendiente } from "../state";
+import { setMatchActual, setInvitacionPendiente, getUsuarioActual, setUsuarioActual } from "../state";
 import { emitir } from "../output";
 
 /**
@@ -147,6 +147,11 @@ export function escucharInvitaciones(
           const conv = await crearConversacion(miId, otroId, puntaje);
           await actualizarConversacionActiva(miId, conv.id);
           await actualizarConversacionActiva(otroId, conv.id);
+          const yo = getUsuarioActual();
+          if (yo) {
+            yo.conversacion_activa_id = conv.id;
+            setUsuarioActual(yo);
+          }
           iniciarChat(conv.id, miId, otroUsername);
           emitir(`  ✓ @${otroUsername} aceptó tu invitación.`);
           emitir("  conversación iniciada.");

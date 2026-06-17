@@ -376,6 +376,8 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     );
     await actualizarConversacionActiva(pend.invitacion.de_usuario, conv.id);
     await actualizarConversacionActiva(yo.id, conv.id);
+    yo.conversacion_activa_id = conv.id;
+    setUsuarioActual(yo);
     iniciarChat(conv.id, yo.id, pend.username);
     setInvitacionPendiente(null);
     return [
