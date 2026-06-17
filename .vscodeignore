@@ -4,5 +4,4 @@ src/**
 .gitignore
 .eslintrc.json
 tsconfig.json
-node_modules/**
 *.map

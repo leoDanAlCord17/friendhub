@@ -40,7 +40,6 @@ export interface Proyecto extends CamposControl {
   usuario_id: string;
   nombre: string;
   descripcion: string | null;
-  lenguaje_principal: string | null;
   lenguajes: string[];
   dominio: string | null;
   tiene_tests: boolean;
@@ -77,7 +76,7 @@ export interface Amigo extends CamposControl {
   usuario_id: string;
   amigo_id: string;
   conversacion_id: string | null;
-  confirmada: boolean;
+  estado: "pendiente" | "confirmada";
 }
 
 /** Tabla `descartados`. */

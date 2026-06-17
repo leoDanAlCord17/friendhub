@@ -214,7 +214,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
       "  sesión:    activa",
       "",
       "  workspace detectado:",
-      `    lenguaje:  ${info.lenguaje_principal ?? "no detectado"}`,
+      `    lenguaje:  ${info.lenguajes?.[0] ?? "no detectado"}`,
       `    dominio:   ${info.dominio ?? "no detectado"}`,
       `    tests:     ${info.tiene_tests ? "sí" : "no"}`,
       `    stack:     ${stack}`,
@@ -504,7 +504,7 @@ function lineaStack(proyecto: Proyecto | null): string {
   if (!proyecto) {
     return "—";
   }
-  return [proyecto.lenguaje_principal, proyecto.stack[0], proyecto.dominio]
+  return [proyecto.lenguajes[0], proyecto.stack[0], proyecto.dominio]
     .filter(Boolean)
     .join(" · ") || "—";
 }
@@ -590,7 +590,7 @@ function renderPostal(
 function tablaCompatibilidad(mio: Proyecto, suyo: Proyecto): string {
   const { puntaje } = calcularCompatibilidad(mio, suyo);
   const filas: Array<[string, string]> = [
-    [mio.lenguaje_principal ?? "—", suyo.lenguaje_principal ?? "—"],
+    [mio.lenguajes[0] ?? "—", suyo.lenguajes[0] ?? "—"],
     [mio.stack[0] ?? "—", suyo.stack[0] ?? "—"],
     [mio.dominio ?? "—", suyo.dominio ?? "—"],
   ];

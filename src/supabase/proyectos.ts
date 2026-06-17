@@ -81,7 +81,6 @@ export async function detectarWorkspace(): Promise<Partial<Proyecto>> {
     lenguajes: [],
     stack: [],
     tiene_tests: false,
-    lenguaje_principal: null,
     dominio: null,
   };
   if (!carpeta) {
@@ -106,7 +105,6 @@ export async function detectarWorkspace(): Promise<Partial<Proyecto>> {
   }
 
   resultado.lenguajes = [...lenguajes];
-  resultado.lenguaje_principal = lenguajePrincipal;
 
   // Tests: carpetas o archivos típicos.
   const tests = await vscode.workspace.findFiles(

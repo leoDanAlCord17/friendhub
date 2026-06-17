@@ -75,6 +75,7 @@ export async function iniciarLoginGithub(
 
   // Suscribirse ANTES de abrir el browser para no perder el callback.
   const promesaToken = esperarCallback();
+  console.log('URL que se va a abrir:', authUrl);
   await vscode.env.openExternal(vscode.Uri.parse(authUrl));
   const accessToken = await promesaToken;
 
@@ -91,6 +92,7 @@ export async function iniciarLoginGithub(
       avatar_url: perfil.avatar_url,
       location: perfil.location ?? null,
       email: perfil.email ?? null,
+      busca: 'colaborar',
       estatus: true,
       creado_por: perfil.login,
       actualizado_por: perfil.login,
