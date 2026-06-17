@@ -37,7 +37,7 @@ import {
   responderInvitacion,
 } from "../supabase/invitaciones";
 import { calcularCompatibilidad } from "../compatibility/score";
-import { escucharInvitaciones, iniciarChat, enviarMensaje } from "../websocket/chat";
+import { escucharInvitaciones, iniciarChat, enviarMensaje, enviarMensajeSistema } from "../websocket/chat";
 
 /**
  * Registro de los comandos `/mh` del chat de MeetHub. Cada handler recibe
@@ -240,8 +240,13 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
       ].join("\n");
     }
 
-    // Si no, registramos nuestra solicitud y esperamos.
+    // Si no, registramos nuestra solicitud y notificamos al otro en tiempo real.
     await proponerAmistad(yo.id, otroId, conv.id);
+    await enviarMensajeSistema(conv.id, {
+      tipo: "amistad_propuesta",
+      de_usuario_id: yo.id,
+      de_username: yo.github_login,
+    });
     return `  propuesta de amistad enviada a @${otroUsername}. esperando que él también escriba /mh add.`;
   },
 
@@ -255,6 +260,12 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     if (!conv) {
       return "No tienes una conversación activa.";
     }
+    // Notificar al otro usuario antes de cerrar el canal.
+    await enviarMensajeSistema(conv.id, {
+      tipo: "conversacion_cerrada",
+      de_usuario_id: yo.id,
+      de_username: yo.github_login,
+    });
     const motivo = conv.usuario_a === yo.id ? "usuario_a_salio" : "usuario_b_salio";
     await cerrarConversacion(conv.id, motivo);
     await actualizarConversacionActiva(yo.id, null);

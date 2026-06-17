@@ -2,7 +2,7 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import { getSupabase } from "../supabase/client";
 import { Invitacion, Mensaje } from "../types";
 import { obtenerUsuario } from "../supabase/usuarios";
-import { setMatchActual, setInvitacionPendiente, getUsuarioActual, setUsuarioActual } from "../state";
+import { setMatchActual, setInvitacionPendiente, getUsuarioActual, setUsuarioActual, getAmigosCache } from "../state";
 import { emitir } from "../output";
 
 /**
@@ -15,6 +15,15 @@ import { emitir } from "../output";
 export type ManejadorMensaje = (mensaje: Mensaje) => void;
 
 const EVENTO = "mensaje";
+const EVENTO_SISTEMA = "sistema";
+
+export type TipoSistema = "amistad_propuesta" | "conversacion_cerrada";
+
+export interface MensajeSistema {
+  tipo: TipoSistema;
+  de_usuario_id: string;
+  de_username: string;
+}
 
 const suscripciones = new Map<string, RealtimeChannel>();
 
@@ -109,7 +118,55 @@ export function iniciarChat(
   miId: string,
   otroUsername: string,
 ): void {
-  suscribirseAlChat(conversacion_id, impresorMensajes(miId, otroUsername));
+  desuscribirse(conversacion_id);
+
+  const canal = getSupabase()
+    .channel(`chat:${conversacion_id}`, { config: { broadcast: { self: true } } })
+    .on("broadcast", { event: EVENTO }, ({ payload }) => {
+      impresorMensajes(miId, otroUsername)(payload as Mensaje);
+    })
+    .on("broadcast", { event: EVENTO_SISTEMA }, ({ payload }) => {
+      manejarSistema(conversacion_id, payload as MensajeSistema);
+    })
+    .subscribe();
+
+  suscripciones.set(conversacion_id, canal);
+}
+
+/** Maneja mensajes de sistema recibidos por el otro usuario. */
+function manejarSistema(conversacion_id: string, msg: MensajeSistema): void {
+  if (msg.tipo === "amistad_propuesta") {
+    emitir([
+      `  @${msg.de_username} quiere ser tu amigo.`,
+      "  /mh add → confirmar amistad",
+    ].join("\n"));
+  } else if (msg.tipo === "conversacion_cerrada") {
+    emitir([
+      `  @${msg.de_username} cerró la conversación.`,
+      "  ya no puedes enviar mensajes.",
+      `  /mh invite @${msg.de_username} → invitarlo de nuevo`,
+    ].join("\n"));
+    const yo = getUsuarioActual();
+    if (yo) {
+      yo.conversacion_activa_id = null;
+      setUsuarioActual(yo);
+    }
+    desuscribirse(conversacion_id);
+  }
+}
+
+/** Envía un mensaje de sistema al otro usuario de la conversación. */
+export async function enviarMensajeSistema(
+  conversacion_id: string,
+  payload: MensajeSistema,
+): Promise<void> {
+  const canal = suscripciones.get(conversacion_id);
+  if (!canal) { return; }
+  await canal.send({
+    type: "broadcast",
+    event: EVENTO_SISTEMA,
+    payload,
+  });
 }
 
 /**
@@ -195,22 +252,37 @@ export function escucharInvitacionesEntrantes(
         const username = remitente?.github_login ?? invit.de_usuario;
         setInvitacionPendiente({ invitacion: invit, username });
 
-        const readme = (invit.readme ?? "Sin README.").slice(0, 300);
-        emitir(
-          [
-            "  ── nueva invitación ──────────────────",
-            `  @${username} quiere conectar contigo.`,
-            "  ",
-            "  README de su proyecto:",
-            `  ${readme}`,
-            "  ",
-            `  compatibilidad: ${barra10(invit.puntaje)} ${invit.puntaje}%`,
-            "  ",
-            "  /mh accept   → aceptar",
-            "  /mh reject   → rechazar",
-            "  ──────────────────────────────────────",
-          ].join("\n"),
-        );
+        const esAmigo = getAmigosCache().some((u) => u.id === invit.de_usuario);
+
+        if (esAmigo) {
+          emitir(
+            [
+              "  ── nueva conversación ────────────────",
+              `  @${username} quiere iniciar una conversación contigo.`,
+              "  ",
+              "  /mh accept   → aceptar",
+              "  /mh reject   → rechazar",
+              "  ──────────────────────────────────────",
+            ].join("\n"),
+          );
+        } else {
+          const readme = (invit.readme ?? "Sin README.").slice(0, 300);
+          emitir(
+            [
+              "  ── nueva invitación ──────────────────",
+              `  @${username} quiere conectar contigo.`,
+              "  ",
+              "  README de su proyecto:",
+              `  ${readme}`,
+              "  ",
+              `  compatibilidad: ${barra10(invit.puntaje)} ${invit.puntaje}%`,
+              "  ",
+              "  /mh accept   → aceptar",
+              "  /mh reject   → rechazar",
+              "  ──────────────────────────────────────",
+            ].join("\n"),
+          );
+        }
       },
     )
     .subscribe();
