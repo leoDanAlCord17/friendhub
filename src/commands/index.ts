@@ -243,15 +243,10 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     const yaPropuso = await existeSolicitudPendiente(otroId, yo.id);
     if (yaPropuso) {
       await confirmarAmistad(yo.id, otroId);
-      await cerrarConversacion(conv.id, "ambos_amigos");
-      await actualizarConversacionActiva(yo.id, null);
-      yo.conversacion_activa_id = null;
-      setUsuarioActual(yo);
       setAmigosCache([]);
       return [
         `  ✓ ahora tú y @${otroUsername} son amigos.`,
-        "  la conversación se cerró.",
-        "  usa /mh friends para ver tu lista de amigos.",
+        "  pueden seguir hablando o escribir /mh leave para cerrar la conversación.",
       ].join("\n");
     }
 
