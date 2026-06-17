@@ -116,18 +116,8 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
       return "  aún no tienes amigos. usa /mh search para conocer devs.";
     }
 
-    const filas = await Promise.all(
-      amigos.map(async (usuario) => {
-        const proyecto = await obtenerProyectoActivo(usuario.id);
-        const username = `@${usuario.github_login}`;
-        const stack = (proyecto?.stack ?? []).slice(0, 2).join(" · ") || "—";
-        return { username, stack };
-      }),
-    );
-
-    const ancho = Math.max(...filas.map((f) => f.username.length)) + 2;
-    const cuerpo = filas
-      .map((f) => `  ${f.username.padEnd(ancho)}${f.stack}`)
+    const cuerpo = amigos
+      .map((u) => `  @${u.github_login}`)
       .join("\n");
 
     return [
@@ -135,7 +125,7 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
       "",
       cuerpo,
       "",
-      `  total: ${filas.length} amigo${filas.length === 1 ? "" : "s"}`,
+      `  total: ${amigos.length} amigo${amigos.length === 1 ? "" : "s"}`,
       "  usa /mh invite @username para iniciar chat",
       "  ──────────────────────────────────────",
     ].join("\n");
