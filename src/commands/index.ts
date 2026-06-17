@@ -254,7 +254,9 @@ const handlers: Record<ComandoMh, ComandoHandler> = {
     if (!conv) {
       return "No tienes una conversación activa.";
     }
-    await cerrarConversacion(conv.id, "abandonada por el usuario");
+    const motivo = conv.usuario_a === yo.id ? "usuario_a_salio" : "usuario_b_salio";
+    await cerrarConversacion(conv.id, motivo);
+    await actualizarConversacionActiva(yo.id, null);
     return "Has salido de la conversación.";
   },
 
