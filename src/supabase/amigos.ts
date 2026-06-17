@@ -49,17 +49,18 @@ export async function confirmarAmistad(
     throw errUpdate;
   }
 
+  // Verificar que existe la fila en la dirección del confirmador (usuario_a_id → usuario_b_id).
   const { data: reciproco } = await supabase
     .from(TABLA)
     .select("id")
-    .eq("usuario_id", usuario_b_id)
-    .eq("amigo_id", usuario_a_id)
+    .eq("usuario_id", usuario_a_id)
+    .eq("amigo_id", usuario_b_id)
     .maybeSingle();
 
   if (!reciproco) {
     const { error: errInsert } = await supabase.from(TABLA).insert({
-      usuario_id: usuario_b_id,
-      amigo_id: usuario_a_id,
+      usuario_id: usuario_a_id,
+      amigo_id: usuario_b_id,
       estado: 'confirmado',
     });
     if (errInsert) {
