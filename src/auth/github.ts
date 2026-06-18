@@ -20,7 +20,7 @@ import { setUsuarioActual, cargarSesion } from "../state";
  * Flujo de GitHub OAuth para TermPals a través de un endpoint serverless en
  * Vercel.
  *
- * GitHub redirige a `https://friendhub-six.vercel.app/api/callback`, que
+ * GitHub redirige a `https://termpals.vercel.app/api/callback`, que
  * intercambia el `code` por el `access_token` (el client secret vive en Vercel,
  * nunca en el cliente) y reenvía a `vscode://leodanielalvarez.termpals/callback`
  * con el `access_token` y el `state` en los query params. VS Code entrega ese
@@ -29,7 +29,7 @@ import { setUsuarioActual, cargarSesion } from "../state";
  */
 
 /** Endpoint serverless de Vercel que hace el intercambio code → token. */
-const REDIRECT_URI = "https://friendhub-six.vercel.app/api/callback";
+const REDIRECT_URI = "https://termpals.vercel.app/api/callback";
 const SCOPES = "read:user user:email";
 const TIMEOUT_MS = 120_000;
 const STATE_KEY = "termpals.oauthState";
