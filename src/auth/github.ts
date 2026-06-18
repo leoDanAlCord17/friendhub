@@ -97,7 +97,7 @@ export async function iniciarLoginGithub(
       avatar_url: perfil.avatar_url,
       location: perfil.location ?? null,
       email: perfil.email ?? null,
-      busca: 'colaborar',
+      busca: null,
       estatus: true,
       creado_por: perfil.login,
       actualizado_por: perfil.login,
