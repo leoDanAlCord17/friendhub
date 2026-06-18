@@ -47,6 +47,7 @@ export interface Proyecto extends CamposControl {
   repo_url: string | null;
   stack: string[];
   readme: string | null;
+  comparte_readme: boolean;
 }
 
 /** Tabla `conversaciones`. */

@@ -6,6 +6,7 @@ import {
 } from "./websocket/chat";
 import { hayCredenciales } from "./supabase/client";
 import { iniciarLoginGithub, manejarCallback } from "./auth/github";
+import { getOnboardingPaso } from "./state";
 
 /**
  * Punto de entrada de la extensión TermPals.
@@ -43,6 +44,21 @@ export function activate(context: vscode.ExtensionContext): void {
         const usuario = await iniciarLoginGithub(context);
         proveedor.imprimir(`Sesión iniciada como @${usuario.github_login}`);
         escucharInvitacionesEntrantes(usuario.id);
+        if (getOnboardingPaso() === 'busca') {
+          proveedor.imprimir([
+            `¡Bienvenido a TermPals, @${usuario.github_login}!`,
+            '',
+            'Vamos a configurar tu perfil rápido.',
+            '',
+            'Paso 1 de 3 — ¿Qué buscás en TermPals?',
+            '',
+            '  1. Colaborar — encontrar devs para proyectos',
+            '  2. Networking — ampliar mi red profesional',
+            '  3. Ambas — colaborar y hacer networking',
+            '',
+            'Escribe el número de tu elección:',
+          ].join('\n'));
+        }
       } catch (err) {
         const msg = (err as Error).message;
         proveedor.imprimir(`Error de login: ${msg}`);

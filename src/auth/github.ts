@@ -6,7 +6,6 @@ import {
   obtenerUsuarioPorGithubId,
   obtenerUsuario,
   crearUsuario,
-  actualizarBusca,
 } from "../supabase/usuarios";
 import {
   detectarWorkspace,
@@ -14,7 +13,7 @@ import {
 } from "../supabase/proyectos";
 import { obtenerConversacionActiva } from "../supabase/conversaciones";
 import { iniciarChat } from "../websocket/chat";
-import { setUsuarioActual, cargarSesion } from "../state";
+import { setUsuarioActual, cargarSesion, setOnboardingPaso } from "../state";
 
 /**
  * Flujo de GitHub OAuth para TermPals a través de un endpoint serverless en
@@ -132,39 +131,12 @@ export async function iniciarLoginGithub(
     }
   }
 
-  // Primera vez: capturar la intención de búsqueda.
   if (usuario.busca === null || usuario.busca === undefined) {
-    const valor = await preguntarBusca();
-    await actualizarBusca(usuario.id, valor);
-    usuario.busca = valor; // actualiza el objeto en memoria
+    setOnboardingPaso('busca');
   }
 
   setUsuarioActual(usuario);
   return usuario;
-}
-
-/** Pregunta al usuario qué tipo de conexión busca. */
-async function preguntarBusca(): Promise<
-  "colaborar" | "networking" | "ambas"
-> {
-  const COLABORAR = "👥  Colaborar — encontrar devs para proyectos";
-  const NETWORKING = "🤝  Networking — ampliar mi red profesional";
-  const AMBAS = "🎯  Ambas — colaborar y hacer networking";
-  const eleccion = await vscode.window.showQuickPick(
-    [COLABORAR, NETWORKING, AMBAS],
-    {
-      title: "¿Qué buscas en TermPals?",
-      placeHolder: "¿Qué buscas en TermPals?",
-      ignoreFocusOut: true,
-    },
-  );
-  if (eleccion === NETWORKING) {
-    return "networking";
-  }
-  if (eleccion === AMBAS) {
-    return "ambas";
-  }
-  return "colaborar"; // por defecto si se cierra sin elegir
 }
 
 /** Espera el callback del UriHandler (con timeout) y resuelve con el token. */

@@ -27,6 +27,8 @@ interface EstadoSesion {
   invitacionPendiente: InvitacionPendiente | null;
   proyectoActual: Proyecto | null;
   amigosCache: Usuario[];
+  onboardingPaso: 'busca' | 'bio' | 'readme' | null;
+  onboardingDatos: { busca?: string; bio?: string };
 }
 
 const estado: EstadoSesion = {
@@ -36,6 +38,8 @@ const estado: EstadoSesion = {
   invitacionPendiente: null,
   proyectoActual: null,
   amigosCache: [],
+  onboardingPaso: null,
+  onboardingDatos: {},
 };
 
 /** Define el usuario autenticado de la sesión. */
@@ -92,6 +96,24 @@ export function setAmigosCache(amigos: Usuario[]): void {
 
 export function getAmigosCache(): Usuario[] {
   return estado.amigosCache;
+}
+
+/** Paso activo del onboarding ('busca' | 'bio' | 'readme' | null). */
+export function setOnboardingPaso(paso: 'busca' | 'bio' | 'readme' | null): void {
+  estado.onboardingPaso = paso;
+}
+
+export function getOnboardingPaso(): 'busca' | 'bio' | 'readme' | null {
+  return estado.onboardingPaso;
+}
+
+/** Datos temporales acumulados durante el onboarding. */
+export function setOnboardingDatos(datos: { busca?: string; bio?: string }): void {
+  estado.onboardingDatos = datos;
+}
+
+export function getOnboardingDatos(): { busca?: string; bio?: string } {
+  return estado.onboardingDatos;
 }
 
 /**

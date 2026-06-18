@@ -17,12 +17,17 @@ import {
   getProyectoActual,
   getAmigosCache,
   setAmigosCache,
+  getOnboardingPaso,
+  setOnboardingPaso,
+  getOnboardingDatos,
+  setOnboardingDatos,
 } from "../state";
-import { detectarWorkspace, obtenerProyectoActivo } from "../supabase/proyectos";
+import { detectarWorkspace, obtenerProyectoActivo, crearOActualizarProyecto } from "../supabase/proyectos";
 import {
   buscarMatch,
   actualizarConversacionActiva,
   actualizarBio,
+  actualizarBusca,
   obtenerUsuario,
   obtenerUsuarioPorGithubId,
 } from "../supabase/usuarios";
@@ -308,6 +313,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       return "  no hay match activo. usa /tp search primero.";
     }
     const proyecto = await obtenerProyectoActivo(match.usuario.id);
+    if (proyecto?.comparte_readme === false) {
+      return "  este usuario no comparte su README.";
+    }
     if (!proyecto?.readme) {
       return "  el match no tiene README disponible.";
     }
@@ -460,6 +468,105 @@ const PREFIJO_BIO = "__BIO__:";
 export async function ejecutarComando(
   linea: string,
 ): Promise<ResultadoComando | null> {
+  const paso = getOnboardingPaso();
+
+  if (paso === 'busca') {
+    const opciones: Record<string, string> = {
+      '1': 'colaborar', '2': 'networking', '3': 'ambas',
+    };
+    const valor = opciones[linea.trim()];
+    if (!valor) {
+      return "  por favor escribe 1, 2 o 3.";
+    }
+    setOnboardingDatos({ ...getOnboardingDatos(), busca: valor });
+    setOnboardingPaso('bio');
+    return `  ✓ guardado.
+
+Paso 2 de 3 — Contanos algo de vos (máx 280 caracteres)
+
+  Esto es lo primero que va a ver la gente cuando hagas match.
+  Escribe /tp skip para completarlo después con /tp profile edit.
+
+  Escribe tu bio:`;
+  }
+
+  if (paso === 'bio') {
+    const yo = getUsuarioActual();
+    if (!yo) { return "Error de sesión."; }
+
+    if (linea.trim() === '/tp skip') {
+      setOnboardingPaso('readme');
+      return `  saltado.
+
+Paso 3 de 3 — Compartir tu README
+
+  TermPals puede leer el README.md de tu proyecto actual y
+  mostrarlo a las personas con las que hagas match.
+
+  1. Sí, compartir mi README con mis matches
+  2. No, solo compartir mi stack técnico (sin README)
+
+  Escribe el número de tu elección:`;
+    }
+
+    if (linea.length > 280) {
+      return "  la bio no puede superar 280 caracteres. Intenta de nuevo:";
+    }
+
+    setOnboardingDatos({ ...getOnboardingDatos(), bio: linea });
+    setOnboardingPaso('readme');
+    return `  ✓ bio guardada.
+
+Paso 3 de 3 — Compartir tu README
+
+  TermPals puede leer el README.md de tu proyecto actual y
+  mostrarlo a las personas con las que hagas match.
+
+  1. Sí, compartir mi README con mis matches
+  2. No, solo compartir mi stack técnico (sin README)
+
+  Escribe el número de tu elección:`;
+  }
+
+  if (paso === 'readme') {
+    const yo = getUsuarioActual();
+    if (!yo) { return "Error de sesión."; }
+
+    const opcion = linea.trim();
+    if (opcion !== '1' && opcion !== '2') {
+      return "  por favor escribe 1 o 2.";
+    }
+
+    const compartirReadme = opcion === '1';
+    const datos = getOnboardingDatos();
+
+    await actualizarBusca(yo.id, datos.busca as "colaborar" | "networking" | "ambas");
+    if (datos.bio) {
+      await actualizarBio(yo.id, datos.bio);
+    }
+
+    const proyecto = getProyectoActual();
+    if (proyecto) {
+      await crearOActualizarProyecto({
+        ...proyecto,
+        usuario_id: yo.id,
+        comparte_readme: compartirReadme,
+        creado_por: yo.github_login,
+        actualizado_por: yo.github_login,
+      });
+    }
+
+    yo.busca = datos.busca as "colaborar" | "networking" | "ambas";
+    if (datos.bio) { yo.bio = datos.bio; }
+    setUsuarioActual(yo);
+    setOnboardingPaso(null);
+    setOnboardingDatos({});
+
+    return `  ✓ perfil configurado. Bienvenido a TermPals.
+
+  Escribe /tp search para encontrar tu primer match.`;
+  }
+
   // Texto de bio enviado desde el panel en modo edición.
   if (linea.startsWith(PREFIJO_BIO)) {
     const bio = linea.slice(PREFIJO_BIO.length).trim();
@@ -676,12 +783,15 @@ function formatoMatch(
   puntaje: number,
 ): string {
   const lugar = match.location ? ` · ${match.location}` : "";
-  const readmeLinea = proyecto?.readme ? "Disponible" : "Sin README disponible.";
+  const readmeLinea = proyecto?.comparte_readme === false
+    ? "No compartido por este usuario"
+    : proyecto?.readme ? "Disponible" : "Sin README disponible.";
   const tests = proyecto?.tiene_tests ? "sí" : "no";
   return [
     "── match encontrado ──────────────────",
     "",
     `@${match.github_login}${lugar}`,
+    `busca: ${match.busca ?? "—"}`,
     "",
     `README:    ${readmeLinea}`,
     "",
