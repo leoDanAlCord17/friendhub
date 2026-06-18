@@ -8,45 +8,29 @@ export default async function handler(req, res) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TermPals — Error</title>
+  <title>TermPals</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Courier New', Courier, monospace;
-      background: #161b18;
-      color: #f87171;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      background: #0a0d0a;
       min-height: 100vh;
-      padding: 24px;
-    }
-    .card {
-      max-width: 520px;
-      width: 100%;
-      background: #1e2922;
-      border: 1px solid #f8717140;
-      border-radius: 8px;
       padding: 32px;
     }
-    .logo { color: #4ade80; font-size: 1.1rem; margin-bottom: 24px; }
-    h1 { font-size: 1rem; margin-bottom: 16px; }
-    p { color: #cbd5e1; font-size: 0.9rem; line-height: 1.6; margin-bottom: 20px; }
-    .hint {
-      color: #64748b;
-      font-size: 0.8rem;
-      border-top: 1px solid #2d3a30;
-      padding-top: 16px;
-    }
+    .linea { font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+    .prompt { color: #4ade80; }
+    .progreso { color: #6b7280; }
+    .error { color: #f87171; margin-top: 8px; }
+    .mensaje { color: #9ca3af; margin-top: 8px; max-width: 600px; }
+    .hint { color: #6b7280; margin-top: 24px; font-size: 13px; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="logo">▸ TermPals</div>
-    <h1>${titulo}</h1>
-    <p>${mensaje}</p>
-    <p class="hint">Cerrá esta pestaña y volvé a VS Code para intentar /tp login de nuevo.</p>
-  </div>
+  <div class="linea prompt">$ /tp login --provider github</div>
+  <div class="linea progreso">&gt; conectando con github.com...</div>
+  <div class="linea error">[ERROR] ${titulo}</div>
+  <div class="linea mensaje">${mensaje}</div>
+  <div class="linea hint">&gt; cerrá esta pestaña y volvé a VS Code para intentar /tp login de nuevo</div>
 </body>
 </html>`;
 
@@ -55,40 +39,38 @@ export default async function handler(req, res) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TermPals — Conectado</title>
+  <title>TermPals</title>
   <meta http-equiv="refresh" content="3;url=${vscodeUrl}">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Courier New', Courier, monospace;
-      background: #161b18;
-      color: #4ade80;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      background: #0a0d0a;
       min-height: 100vh;
-      padding: 24px;
-    }
-    .card {
-      max-width: 520px;
-      width: 100%;
-      background: #1e2922;
-      border: 1px solid #4ade8040;
-      border-radius: 8px;
       padding: 32px;
     }
-    .logo { font-size: 1.1rem; margin-bottom: 24px; }
-    h1 { font-size: 1rem; margin-bottom: 16px; }
-    p { color: #cbd5e1; font-size: 0.9rem; line-height: 1.6; }
+    .linea { font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+    .prompt { color: #4ade80; }
+    .progreso { color: #6b7280; }
+    .ok { color: #4ade80; margin-top: 8px; }
+    .redirigiendo { color: #6b7280; margin-top: 16px; }
+    .link { color: #4ade80; margin-top: 24px; }
+    .link a { color: #4ade80; text-decoration: underline; }
+    @keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:0} }
+    .cursor { animation: blink 1s infinite; }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="logo">▸ TermPals</div>
-    <h1>✓ Autenticación completada</h1>
-    <p>Redirigiendo a VS Code... Si no abre automáticamente, <a href="${vscodeUrl}" style="color:#4ade80">hacé click aquí</a>.</p>
-  </div>
-  <script>window.location.href = ${JSON.stringify(vscodeUrl)};</script>
+  <div class="linea prompt">$ /tp login --provider github</div>
+  <div class="linea progreso">&gt; conectando con github.com...</div>
+  <div class="linea progreso">&gt; intercambiando código de autorización...</div>
+  <div class="linea progreso">&gt; verificando token...</div>
+  <div class="linea ok">[OK] autenticación completada</div>
+  <div class="linea redirigiendo">redirigiendo a vs code<span class="cursor">_</span></div>
+  <div class="linea link">&gt; <a href="${vscodeUrl}">abrir vs code manualmente</a></div>
+  <script>
+    setTimeout(() => { window.location.href = ${JSON.stringify(vscodeUrl)}; }, 1500);
+  </script>
 </body>
 </html>`;
 
