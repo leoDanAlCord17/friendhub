@@ -184,6 +184,7 @@ export default async function handler(req, res) {
 
   // ── 6. Éxito: redirigir a VS Code ─────────────────────────────────────────
 
-  const vscodeUrl = `vscode://leodanielalvarez.termpals/callback?access_token=${data.access_token}&state=${state ?? ''}`;
+  const vscodeUrl = `vscode://leodanielalvarez.termpals/callback` +
+    `?access_token=${encodeURIComponent(data.access_token)}&state=${encodeURIComponent(state ?? '')}`;
   return res.status(200).send(paginaExito(vscodeUrl));
 }
