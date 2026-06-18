@@ -54,7 +54,7 @@ export default async function handler(req, res) {
       `);
     }
 
-    const vscodeUrl = `vscode://leodanielalvarez.TermPals/callback?access_token=${data.access_token}&state=${state ?? ''}`;
+    const vscodeUrl = `vscode://leodanielalvarez.termpals/callback?access_token=${data.access_token}&state=${state ?? ''}`;
     res.redirect(302, vscodeUrl);
 
   } catch (error) {
