@@ -15,6 +15,7 @@ import {
   getInvitacionPendiente,
   setInvitacionPendiente,
   getProyectoActual,
+  setProyectoActual,
   getAmigosCache,
   setAmigosCache,
   getOnboardingPaso,
@@ -201,7 +202,11 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     const stackFuente = proyecto?.stack ?? info.stack ?? [];
     const stack = stackFuente.slice(0, 3).join(" · ") || "—";
 
-    return [
+    const readmeEstado = !proyecto
+      ? "sin configurar"
+      : proyecto.comparte_readme === false ? "privado" : "público";
+
+    const lineas = [
       "  ── estado actual ─────────────────────",
       "",
       `  usuario:   @${yo.github_login}`,
@@ -213,11 +218,16 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       `    dominio:   ${info.dominio ?? "no detectado"}`,
       `    tests:     ${info.tiene_tests ? "sí" : "no"}`,
       `    stack:     ${stack}`,
+      `    readme:    ${readmeEstado}`,
       "",
       `  conversación activa:  ${yo.conversacion_activa_id ? "sí" : "no"}`,
       `  amigos:               ${getAmigosCache().length}`,
       "  ──────────────────────────────────────",
-    ].join("\n");
+    ];
+    if (proyecto) {
+      lineas.push("  /tp readme toggle → cambia el estatus de tu README");
+    }
+    return lineas.join("\n");
   },
 
   /** /tp add <usuario> — propone amistad en la conversación activa. */
@@ -284,12 +294,30 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     return "Has salido de la conversación.";
   },
 
-  /** /tp readme — muestra el README completo del proyecto del match. */
-  readme: async () => {
+  /** /tp readme [toggle] — muestra el README del match en conversación, o togglea el tuyo. */
+  readme: async (args) => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
       return yo;
     }
+
+    if (args[0] === "toggle") {
+      const proyecto = getProyectoActual();
+      if (!proyecto) {
+        return "  no tienes un proyecto detectado aún. usa /tp search o reabre tu workspace primero.";
+      }
+      const nuevoValor = proyecto.comparte_readme === false ? true : false;
+      const actualizado = await crearOActualizarProyecto({
+        ...proyecto,
+        comparte_readme: nuevoValor,
+        actualizado_por: yo.github_login,
+      });
+      setProyectoActual(actualizado);
+      return nuevoValor
+        ? "  ✓ tu README ahora es público para tus matches."
+        : "  ✓ tu README ahora es privado.";
+    }
+
     const conv = await obtenerConversacionActiva(yo.id);
     if (!conv) {
       return "No tienes una conversación activa.";
@@ -642,21 +670,26 @@ async function refrescarUsuario(yo: Usuario): Promise<Usuario> {
 function textoAyuda(): string {
   return [
     "Comandos de TermPals:",
-    "  /tp search           Busca desarrolladores compatibles",
-    "  /tp connect          Envía invitación al match actual",
-    "  /tp accept           Acepta la invitación pendiente",
-    "  /tp reject           Rechaza la invitación pendiente",
-    "  /tp friends          Lista tus amigos",
-    "  /tp invite <usuario> Invita a colaborar",
-    "  /tp add              Propone amistad al usuario de la conversación activa",
-    "  /tp status           Muestra el stack detectado de tu workspace",
-    "  /tp stack            Compara tu stack con el de tu match",
-    "  /tp leave            Cierra la conversación actual",
-    "  /tp read             Lee el README completo del match (antes de conectar)",
-    "  /tp readme           Muestra el README del match en conversación activa",
-    "  /tp profile          Muestra tu postal de presentación",
-    "  /tp clear            Limpia la pantalla",
-    "  /tp help             Muestra esta ayuda",
+    "  /tp search              Busca desarrolladores compatibles",
+    "  /tp connect             Envía invitación al match actual",
+    "  /tp accept              Acepta la invitación pendiente",
+    "  /tp reject              Rechaza la invitación pendiente",
+    "  /tp friends             Lista tus amigos",
+    "  /tp invite <usuario>    Invita a colaborar",
+    "  /tp add                 Propone amistad al usuario de la conversación activa",
+    "  /tp leave               Cierra la conversación actual",
+    "  /tp status              Muestra tu estado, workspace y sesión",
+    "  /tp stack               Compara tu stack con el de tu match",
+    "  /tp read                Lee el README completo del match (antes de conectar)",
+    "  /tp readme              Muestra el README del match en conversación activa",
+    "  /tp readme toggle       Cambia el estatus de tu README (público/privado)",
+    "  /tp profile             Muestra tu postal de presentación",
+    "  /tp profile edit        Edita tu bio",
+    "  /tp clear               Limpia la pantalla",
+    "  /tp help                Muestra esta ayuda",
+    "",
+    "  Durante el onboarding:",
+    "  /tp skip                Salta el paso actual del onboarding",
   ].join("\n");
 }
 
