@@ -86,8 +86,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
         "",
         "    1. Sí, me interesaría",
         "    2. No, prefiero la versión gratis",
+        "    3. Prefiero responder después",
         "",
-        "  Escribe 1 o 2:",
+        "  Escribe 1, 2, o 3:",
       ].join("\n");
     }
 
@@ -536,9 +537,16 @@ export async function ejecutarComando(
 ): Promise<ResultadoComando | null> {
   if (getEsperandoRespuestaPro()) {
     const opcion = linea.trim();
-    if (opcion !== "1" && opcion !== "2") {
-      return "  por favor escribe 1 o 2.";
+
+    if (opcion === "/tp skip" || opcion === "3") {
+      setEsperandoRespuestaPro(false);
+      return "  ok, seguimos con lo gratis. podés responder esto después con /tp search.";
     }
+
+    if (opcion !== "1" && opcion !== "2") {
+      return "  escribe 1, 2, o /tp skip para responder después.";
+    }
+
     const yo = getUsuarioActual();
     if (!yo) {
       return "Error de sesión.";

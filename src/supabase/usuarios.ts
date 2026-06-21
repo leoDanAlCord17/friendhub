@@ -155,40 +155,21 @@ export async function listarDisponibles(): Promise<Usuario[]> {
   return (data ?? []) as Usuario[];
 }
 
-/** Verifica si el usuario puede hacer una búsqueda hoy y, si puede, consume una. */
+/**
+ * Llama a la RPC `consumir_busqueda` que ejecuta el conteo de forma atómica
+ * (SELECT … FOR UPDATE), eliminando la race condition de read-modify-write.
+ */
 export async function verificarYConsumirBusqueda(
   usuario_id: string,
 ): Promise<{ permitido: boolean; restantes: number }> {
-  const usuario = await obtenerUsuario(usuario_id);
-  if (!usuario) {
-    throw new Error("Usuario no encontrado");
+  const { data, error } = await getSupabase().rpc("consumir_busqueda", {
+    p_usuario_id: usuario_id,
+  });
+  if (error) {
+    throw error;
   }
-
-  const hoy = new Date().toISOString().slice(0, 10);
-  const ultimaFecha = usuario.ultima_busqueda_en
-    ? new Date(usuario.ultima_busqueda_en).toISOString().slice(0, 10)
-    : null;
-
-  let searchesActuales = usuario.searches_hoy ?? 0;
-
-  if (ultimaFecha !== hoy) {
-    searchesActuales = 0;
-  }
-
-  if (searchesActuales >= 4) {
-    return { permitido: false, restantes: 0 };
-  }
-
-  const nuevoContador = searchesActuales + 1;
-  await getSupabase()
-    .from(TABLA)
-    .update({
-      searches_hoy: nuevoContador,
-      ultima_busqueda_en: new Date().toISOString(),
-    })
-    .eq("id", usuario_id);
-
-  return { permitido: true, restantes: 4 - nuevoContador };
+  const fila = (data as { permitido: boolean; restantes: number }[])[0];
+  return { permitido: fila.permitido, restantes: fila.restantes };
 }
 
 /** Registra o actualiza el interés del usuario en TermPals Pro. */
