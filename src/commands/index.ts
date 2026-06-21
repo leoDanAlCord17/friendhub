@@ -22,6 +22,8 @@ import {
   setOnboardingPaso,
   getOnboardingDatos,
   setOnboardingDatos,
+  getEsperandoRespuestaPro,
+  setEsperandoRespuestaPro,
 } from "../state";
 import { detectarWorkspace, obtenerProyectoActivo, crearOActualizarProyecto } from "../supabase/proyectos";
 import {
@@ -31,6 +33,8 @@ import {
   actualizarBusca,
   obtenerUsuario,
   obtenerUsuarioPorGithubId,
+  verificarYConsumirBusqueda,
+  guardarInteresPro,
 } from "../supabase/usuarios";
 import { obtenerAmigos, proponerAmistad, confirmarAmistad, existeSolicitudPendiente } from "../supabase/amigos";
 import {
@@ -66,6 +70,27 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     if (typeof base === "string") {
       return base;
     }
+
+    const limite = await verificarYConsumirBusqueda(base.id);
+    if (!limite.permitido) {
+      setEsperandoRespuestaPro(true);
+      return [
+        "  ya usaste tus 4 búsquedas de hoy. Se renuevan en 24h.",
+        "",
+        "  Estamos evaluando lanzar TermPals Pro:",
+        "    · búsquedas ilimitadas",
+        "    · historial de conversaciones (ya no se borran)",
+        "    · acceso prioritario a nuevas features",
+        "",
+        "  ¿Pagarías por esto?",
+        "",
+        "    1. Sí, me interesaría",
+        "    2. No, prefiero la versión gratis",
+        "",
+        "  Escribe 1 o 2:",
+      ].join("\n");
+    }
+
     const yo = await refrescarUsuario(base);
     const activa = await obtenerConversacionActiva(yo.id);
     if (activa) {
@@ -98,7 +123,11 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
         proyectoMatch,
       ) + "\n\n";
 
-    return postal + formatoMatch(match, proyectoMatch, puntaje);
+    return (
+      postal +
+      formatoMatch(match, proyectoMatch, puntaje) +
+      `\n\n  (te quedan ${limite.restantes} búsquedas hoy)`
+    );
   },
 
   /** /tp friends — lista tus amigos confirmados con su stack. */
@@ -206,6 +235,14 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       ? "sin configurar"
       : proyecto.comparte_readme === false ? "privado" : "público";
 
+    const hoy = new Date().toISOString().slice(0, 10);
+    const ultimaFecha = yo.ultima_busqueda_en
+      ? new Date(yo.ultima_busqueda_en).toISOString().slice(0, 10)
+      : null;
+    const searchesActuales =
+      ultimaFecha === hoy ? (yo.searches_hoy ?? 0) : 0;
+    const busquedasRestantes = Math.max(0, 4 - searchesActuales);
+
     const lineas = [
       "  ── estado actual ─────────────────────",
       "",
@@ -222,6 +259,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       "",
       `  conversación activa:  ${yo.conversacion_activa_id ? "sí" : "no"}`,
       `  amigos:               ${getAmigosCache().length}`,
+      `  búsquedas hoy:        ${busquedasRestantes}/4 restantes`,
       "  ──────────────────────────────────────",
     ];
     if (proyecto) {
@@ -496,6 +534,33 @@ const PREFIJO_BIO = "__BIO__:";
 export async function ejecutarComando(
   linea: string,
 ): Promise<ResultadoComando | null> {
+  if (getEsperandoRespuestaPro()) {
+    const opcion = linea.trim();
+    if (opcion !== "1" && opcion !== "2") {
+      return "  por favor escribe 1 o 2.";
+    }
+    const yo = getUsuarioActual();
+    if (!yo) {
+      return "Error de sesión.";
+    }
+    const interesado = opcion === "1";
+    await guardarInteresPro(yo.id, interesado);
+    setEsperandoRespuestaPro(false);
+    if (interesado) {
+      return [
+        "  ✓ genial, te avisaremos apenas esté disponible.",
+        "  mientras tanto, podés seguir usando TermPals gratis,",
+        "  con 4 búsquedas diarias.",
+      ].join("\n");
+    } else {
+      return [
+        "  ✓ gracias por tu honestidad, lo tendremos en cuenta.",
+        "  podés seguir usando TermPals gratis,",
+        "  con 4 búsquedas diarias.",
+      ].join("\n");
+    }
+  }
+
   const paso = getOnboardingPaso();
 
   if (paso === 'busca') {

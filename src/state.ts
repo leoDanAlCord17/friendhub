@@ -29,6 +29,7 @@ interface EstadoSesion {
   amigosCache: Usuario[];
   onboardingPaso: 'busca' | 'bio' | 'readme' | null;
   onboardingDatos: { busca?: string; bio?: string };
+  esperandoRespuestaPro: boolean;
 }
 
 const estado: EstadoSesion = {
@@ -40,6 +41,7 @@ const estado: EstadoSesion = {
   amigosCache: [],
   onboardingPaso: null,
   onboardingDatos: {},
+  esperandoRespuestaPro: false,
 };
 
 /** Define el usuario autenticado de la sesión. */
@@ -114,6 +116,15 @@ export function setOnboardingDatos(datos: { busca?: string; bio?: string }): voi
 
 export function getOnboardingDatos(): { busca?: string; bio?: string } {
   return estado.onboardingDatos;
+}
+
+/** Indica si el usuario está esperando responder la encuesta de interés en Pro. */
+export function setEsperandoRespuestaPro(valor: boolean): void {
+  estado.esperandoRespuestaPro = valor;
+}
+
+export function getEsperandoRespuestaPro(): boolean {
+  return estado.esperandoRespuestaPro;
 }
 
 /**

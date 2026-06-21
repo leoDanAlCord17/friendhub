@@ -33,6 +33,8 @@ export interface Usuario extends CamposControl {
   disponible: boolean;
   busca: "colaborar" | "networking" | "ambas" | null;
   conversacion_activa_id: string | null;
+  searches_hoy: number;
+  ultima_busqueda_en: string | null;
 }
 
 /** Tabla `proyectos`. */

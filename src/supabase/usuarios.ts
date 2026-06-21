@@ -154,3 +154,55 @@ export async function listarDisponibles(): Promise<Usuario[]> {
   }
   return (data ?? []) as Usuario[];
 }
+
+/** Verifica si el usuario puede hacer una búsqueda hoy y, si puede, consume una. */
+export async function verificarYConsumirBusqueda(
+  usuario_id: string,
+): Promise<{ permitido: boolean; restantes: number }> {
+  const usuario = await obtenerUsuario(usuario_id);
+  if (!usuario) {
+    throw new Error("Usuario no encontrado");
+  }
+
+  const hoy = new Date().toISOString().slice(0, 10);
+  const ultimaFecha = usuario.ultima_busqueda_en
+    ? new Date(usuario.ultima_busqueda_en).toISOString().slice(0, 10)
+    : null;
+
+  let searchesActuales = usuario.searches_hoy ?? 0;
+
+  if (ultimaFecha !== hoy) {
+    searchesActuales = 0;
+  }
+
+  if (searchesActuales >= 4) {
+    return { permitido: false, restantes: 0 };
+  }
+
+  const nuevoContador = searchesActuales + 1;
+  await getSupabase()
+    .from(TABLA)
+    .update({
+      searches_hoy: nuevoContador,
+      ultima_busqueda_en: new Date().toISOString(),
+    })
+    .eq("id", usuario_id);
+
+  return { permitido: true, restantes: 4 - nuevoContador };
+}
+
+/** Registra o actualiza el interés del usuario en TermPals Pro. */
+export async function guardarInteresPro(
+  usuario_id: string,
+  interesado: boolean,
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from("interes_pro")
+    .upsert(
+      { usuario_id, interesado, actualizado_por: "sistema" },
+      { onConflict: "usuario_id" },
+    );
+  if (error) {
+    throw error;
+  }
+}
