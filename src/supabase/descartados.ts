@@ -34,6 +34,11 @@ export function estaDescartadoEnSesion(
   return descartesSesion.get(usuario_id)?.has(descartado_id) ?? false;
 }
 
+/** Devuelve los IDs descartados por un usuario en la sesión actual. */
+export function obtenerDescartadosEnSesionIds(usuario_id: string): string[] {
+  return [...(descartesSesion.get(usuario_id) ?? [])];
+}
+
 /** Carga en sesión los descartes ya persistidos de un usuario. */
 export async function precargarDescartes(usuario_id: string): Promise<void> {
   const { data, error } = await getSupabase()

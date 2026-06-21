@@ -8,6 +8,7 @@ export interface MatchActual {
   usuario: Usuario;
   proyecto: Proyecto | null;
   compatibilidad: number;
+  nivelMatch: 'exacto' | 'ambas' | 'cualquiera';
 }
 
 /** Invitación entrante a la espera de respuesta del usuario actual. */

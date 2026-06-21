@@ -1,5 +1,6 @@
 import { getSupabase } from "./client";
 import { Usuario } from "../types";
+import { obtenerDescartadosEnSesionIds } from "./descartados";
 
 const TABLA = "usuarios";
 
@@ -64,51 +65,64 @@ export async function actualizarConversacionActiva(
 }
 
 /**
- * Busca un match disponible para el usuario.
+ * Busca un match en cascada de 3 niveles:
+ *   1. Coincidencia exacta de `busca`
+ *   2. Candidatos con `busca='ambas'` (o todos si el usuario mismo busca 'ambas')
+ *   3. Cualquier usuario disponible sin filtrar por `busca`
  *
- * Filtra usuarios activos, libres (sin conversación activa), con la misma
- * intención `busca` (colaborar | networking | ambas) y que no hayan sido descartados
- * por este usuario. Devuelve uno al azar, o null si no hay candidatos.
+ * Devuelve el usuario elegido y el nivel de coincidencia, o null si no hay nadie.
  */
 export async function buscarMatch(
   usuario_id: string,
   busca: string,
-): Promise<Usuario | null> {
+): Promise<{ usuario: Usuario; nivelMatch: 'exacto' | 'ambas' | 'cualquiera' } | null> {
   const supabase = getSupabase();
 
-  const { data: desc, error: errDesc } = await supabase
-    .from("descartados")
-    .select("descartado_id")
-    .eq("usuario_id", usuario_id)
-    .eq("estatus", true);
-  if (errDesc) {
-    throw errDesc;
-  }
-  const excluidos = (desc ?? []).map(
-    (d) => (d as { descartado_id: string }).descartado_id,
-  );
+  // Descartados de la sesión en memoria (cargados por precargarDescartes al login)
+  const excluidos = new Set(obtenerDescartadosEnSesionIds(usuario_id));
 
-  let query = supabase
-    .from(TABLA)
-    .select("*")
-    .eq("estatus", true)
-    .eq("busca", busca)
-    .is("conversacion_activa_id", null)
-    .neq("id", usuario_id);
+  const filtrar = (rows: unknown[]): Usuario[] =>
+    (rows as Usuario[]).filter((u) => !excluidos.has(u.id));
 
-  if (excluidos.length > 0) {
-    query = query.not("id", "in", `(${excluidos.join(",")})`);
+  const elegir = (candidatos: Usuario[]): Usuario =>
+    candidatos[Math.floor(Math.random() * candidatos.length)];
+
+  const base = () =>
+    supabase
+      .from(TABLA)
+      .select("*")
+      .eq("estatus", true)
+      .is("conversacion_activa_id", null)
+      .neq("id", usuario_id);
+
+  // ── Nivel 1: coincidencia exacta ──────────────────────────────────────────
+  const { data: d1, error: e1 } = await base().eq("busca", busca);
+  if (e1) { throw e1; }
+  const nivel1 = filtrar(d1 ?? []);
+  if (nivel1.length > 0) {
+    return { usuario: elegir(nivel1), nivelMatch: 'exacto' };
   }
 
-  const { data, error } = await query;
-  if (error) {
-    throw error;
+  // ── Nivel 2: candidatos con busca='ambas' (o cualquier busca si yo soy 'ambas') ──
+  const { data: d2, error: e2 } =
+    busca === 'ambas'
+      ? await base().in("busca", ["colaborar", "networking", "ambas"])
+      : await base().eq("busca", "ambas");
+  if (e2) { throw e2; }
+  const nivel2 = filtrar(d2 ?? []);
+  if (nivel2.length > 0) {
+    return { usuario: elegir(nivel2), nivelMatch: 'ambas' };
   }
-  const candidatos = (data ?? []) as Usuario[];
-  if (candidatos.length === 0) {
-    return null;
+
+  // ── Nivel 3: cualquier usuario disponible ─────────────────────────────────
+  const { data: d3, error: e3 } = await base();
+  if (e3) { throw e3; }
+  const nivel3 = filtrar(d3 ?? []);
+  if (nivel3.length > 0) {
+    return { usuario: elegir(nivel3), nivelMatch: 'cualquiera' };
   }
-  return candidatos[Math.floor(Math.random() * candidatos.length)];
+
+  return null;
 }
 
 /**

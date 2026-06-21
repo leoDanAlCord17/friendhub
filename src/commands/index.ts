@@ -48,6 +48,7 @@ import {
 } from "../supabase/invitaciones";
 import { calcularCompatibilidad } from "../compatibility/score";
 import { escucharInvitaciones, iniciarChat, enviarMensaje, enviarMensajeSistema } from "../websocket/chat";
+import { crearFeedback } from "../supabase/feedback";
 
 /**
  * Registro de los comandos `/tp` del chat de TermPals. Cada handler recibe
@@ -99,11 +100,12 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
 
     const miStack = await detectarWorkspace();
-    const match = await buscarMatch(yo.id, yo.busca ?? "colaborar");
-    if (!match) {
+    const resultado = await buscarMatch(yo.id, yo.busca ?? "colaborar");
+    if (!resultado) {
       return "No hay desarrolladores disponibles ahora mismo. Intenta más tarde.";
     }
 
+    const { usuario: match, nivelMatch } = resultado;
     const proyectoMatch = await obtenerProyectoActivo(match.id);
     const { puntaje } = calcularCompatibilidad(
       miStack as Proyecto,
@@ -114,6 +116,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       usuario: match,
       proyecto: proyectoMatch,
       compatibilidad: puntaje,
+      nivelMatch,
     });
 
     const postal =
@@ -126,7 +129,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
 
     return (
       postal +
-      formatoMatch(match, proyectoMatch, puntaje) +
+      formatoMatch(match, proyectoMatch, puntaje, nivelMatch) +
       `\n\n  (te quedan ${limite.restantes} búsquedas hoy)`
     );
   },
@@ -520,6 +523,34 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     setInvitacionPendiente(null);
     return "  invitación rechazada.";
   },
+
+  /** /tp bug <mensaje> — reporta un problema. */
+  bug: async (args) => {
+    const yo = requiereUsuario();
+    if (typeof yo === "string") {
+      return yo;
+    }
+    const mensaje = args.join(" ").trim();
+    if (!mensaje) {
+      return "  uso: /tp bug <descripción del problema>";
+    }
+    await crearFeedback(yo.id, "bug", mensaje, yo.github_login);
+    return "  ✓ gracias por reportarlo, lo vamos a revisar.";
+  },
+
+  /** /tp sugerencia <mensaje> — propone una mejora. */
+  sugerencia: async (args) => {
+    const yo = requiereUsuario();
+    if (typeof yo === "string") {
+      return yo;
+    }
+    const mensaje = args.join(" ").trim();
+    if (!mensaje) {
+      return "  uso: /tp sugerencia <tu idea>";
+    }
+    await crearFeedback(yo.id, "sugerencia", mensaje, yo.github_login);
+    return "  ✓ gracias por la idea, la vamos a tener en cuenta.";
+  },
 };
 
 /** Lista de comandos válidos. */
@@ -759,6 +790,8 @@ function textoAyuda(): string {
     "  /tp profile             Muestra tu postal de presentación",
     "  /tp profile edit        Edita tu bio",
     "  /tp clear               Limpia la pantalla",
+    "  /tp bug <mensaje>       Reporta un problema",
+    "  /tp sugerencia <msg>    Propone una mejora",
     "  /tp help                Muestra esta ayuda",
     "",
     "  Durante el onboarding:",
@@ -887,16 +920,32 @@ function formatoMatch(
   match: Usuario,
   proyecto: Proyecto | null,
   puntaje: number,
+  nivelMatch: 'exacto' | 'ambas' | 'cualquiera' = 'exacto',
 ): string {
   const lugar = match.location ? ` · ${match.location}` : "";
   const readmeLinea = proyecto?.comparte_readme === false
     ? "No compartido por este usuario"
     : proyecto?.readme ? "Disponible" : "Sin README disponible.";
   const tests = proyecto?.tiene_tests ? "sí" : "no";
-  return [
+
+  const avisoNivel =
+    nivelMatch === 'ambas'
+      ? "  (este match no es tu categoría exacta, pero está abierto a ambas)"
+      : nivelMatch === 'cualquiera'
+        ? "  (no hay matches en tu categoría ahora mismo, este es de otra categoría)"
+        : null;
+
+  const lineas = [
     "── match encontrado ──────────────────",
     "",
     `@${match.github_login}${lugar}`,
+  ];
+
+  if (avisoNivel) {
+    lineas.push(avisoNivel);
+  }
+
+  lineas.push(
     `busca: ${match.busca ?? "—"}`,
     "",
     `README:    ${readmeLinea}`,
@@ -910,7 +959,9 @@ function formatoMatch(
     "/tp read      → leer su README completo",
     "/tp search    → buscar otro",
     "──────────────────────────────────────",
-  ].join("\n");
+  );
+
+  return lineas.join("\n");
 }
 
 export { handlers };

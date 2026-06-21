@@ -103,7 +103,21 @@ async function main() {
     q => q.in('usuario_id', ids),
   );
 
-  // ── 6. usuarios ───────────────────────────────────────────────────────────
+  // ── 6. interes_pro ────────────────────────────────────────────────────────
+  total += await eliminar(
+    'interes_pro',
+    'interes_pro',
+    q => q.in('usuario_id', ids),
+  );
+
+  // ── 7. feedback ───────────────────────────────────────────────────────────
+  total += await eliminar(
+    'feedback',
+    'feedback',
+    q => q.in('usuario_id', ids),
+  );
+
+  // ── 8. usuarios ───────────────────────────────────────────────────────────
   total += await eliminar(
     'usuarios',
     'usuarios',

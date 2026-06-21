@@ -90,6 +90,13 @@ export interface Descartado extends CamposControl {
   motivo: string | null;
 }
 
+/** Tabla `feedback`. */
+export interface Feedback extends CamposControl {
+  usuario_id: string;
+  tipo: 'bug' | 'sugerencia';
+  mensaje: string;
+}
+
 // ---------------------------------------------------------------------------
 // Tipos auxiliares
 // ---------------------------------------------------------------------------
@@ -129,7 +136,9 @@ export type ComandoTp =
   | "connect"
   | "accept"
   | "reject"
-  | "read";
+  | "read"
+  | "bug"
+  | "sugerencia";
 
 /** Objeto de control que un comando puede devolver al panel. */
 export interface RespuestaModo {
