@@ -77,3 +77,27 @@ export async function tocarUltimoMensaje(
     throw error;
   }
 }
+
+/**
+ * Llama a la RPC transaccional `conectar_usuarios` que en una sola
+ * sentencia crea la invitación (aceptada), la conversación, las vincula
+ * y actualiza `conversacion_activa_id` de ambos usuarios.
+ */
+export async function conectarUsuarios(
+  deUsuario: string,
+  paraUsuario: string,
+  readme: string,
+  puntaje: number,
+): Promise<{ conversacionId: string; invitacionId: string }> {
+  const { data, error } = await getSupabase().rpc("conectar_usuarios", {
+    p_de_usuario: deUsuario,
+    p_para_usuario: paraUsuario,
+    p_readme: readme,
+    p_puntaje: puntaje,
+  });
+  if (error) {
+    throw error;
+  }
+  const fila = (data as { conversacion_id: string; invitacion_id: string }[])[0];
+  return { conversacionId: fila.conversacion_id, invitacionId: fila.invitacion_id };
+}
