@@ -31,6 +31,13 @@ interface EstadoSesion {
   onboardingPaso: 'busca' | 'bio' | 'readme' | null;
   onboardingDatos: { busca?: string; bio?: string };
   esperandoRespuestaPro: boolean;
+  esperandoConfirmacionDelete: boolean;
+  consentimientoPendiente: {
+    acepta_perfil: boolean;
+    acepta_stack: boolean;
+    acepta_readme: boolean;
+    acepta_matching: boolean;
+  } | null;
 }
 
 const estado: EstadoSesion = {
@@ -43,6 +50,8 @@ const estado: EstadoSesion = {
   onboardingPaso: null,
   onboardingDatos: {},
   esperandoRespuestaPro: false,
+  esperandoConfirmacionDelete: false,
+  consentimientoPendiente: null,
 };
 
 /** Define el usuario autenticado de la sesión. */
@@ -126,6 +135,36 @@ export function setEsperandoRespuestaPro(valor: boolean): void {
 
 export function getEsperandoRespuestaPro(): boolean {
   return estado.esperandoRespuestaPro;
+}
+
+/** Indica si el usuario está esperando confirmar la eliminación de su cuenta. */
+export function setEsperandoConfirmacionDelete(valor: boolean): void {
+  estado.esperandoConfirmacionDelete = valor;
+}
+
+export function getEsperandoConfirmacionDelete(): boolean {
+  return estado.esperandoConfirmacionDelete;
+}
+
+/** Datos de consentimiento granular capturados en la pantalla GDPR, pendientes de registrar en Supabase. */
+export function setConsentimientoPendiente(
+  datos: {
+    acepta_perfil: boolean;
+    acepta_stack: boolean;
+    acepta_readme: boolean;
+    acepta_matching: boolean;
+  } | null,
+): void {
+  estado.consentimientoPendiente = datos;
+}
+
+export function getConsentimientoPendiente(): {
+  acepta_perfil: boolean;
+  acepta_stack: boolean;
+  acepta_readme: boolean;
+  acepta_matching: boolean;
+} | null {
+  return estado.consentimientoPendiente;
 }
 
 /**

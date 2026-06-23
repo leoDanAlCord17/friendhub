@@ -1,7 +1,9 @@
 import * as vscode from "vscode";
 import { ejecutarComando } from "../commands";
-import { getUsuarioActual } from "../state";
+import { getUsuarioActual, getOnboardingPaso, setConsentimientoPendiente } from "../state";
 import { setEmisor } from "../output";
+import { intentarLoginSilencioso } from "../auth/github";
+import { escucharInvitacionesEntrantes } from "../websocket/chat";
 
 /**
  * Proveedor del webview de TermPals que vive en el panel inferior de VS Code
@@ -11,10 +13,50 @@ import { setEmisor } from "../output";
 export class TermPalsPanel implements vscode.WebviewViewProvider {
   public static readonly viewType = "termpals.main";
 
+  private static readonly CONSENT_KEY = "termpals.consent.shown";
+
   private view?: vscode.WebviewView;
   private loginIntentado = false;
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(
+    private readonly extensionUri: vscode.Uri,
+    private readonly context: vscode.ExtensionContext,
+  ) {}
+
+  private yaAceptoConsentimiento(): boolean {
+    return this.context.globalState.get(TermPalsPanel.CONSENT_KEY, false);
+  }
+
+  private async guardarConsentimiento(): Promise<void> {
+    await this.context.globalState.update(TermPalsPanel.CONSENT_KEY, true);
+    await this.context.globalState.update(
+      "termpals.consent.date",
+      new Date().toISOString(),
+    );
+  }
+
+  private async loginSilenciosoOManual(): Promise<void> {
+    const usuario = await intentarLoginSilencioso(this.context);
+    if (usuario) {
+      this.imprimir(`  sesión restaurada como @${usuario.github_login}`);
+      escucharInvitacionesEntrantes(usuario.id);
+      if (getOnboardingPaso() === "busca") {
+        this.imprimir([
+          `¡Bienvenido de vuelta, @${usuario.github_login}!`,
+          "",
+          "Paso 1 de 3 — ¿Qué buscás en TermPals?",
+          "",
+          "  1. Colaborar — encontrar devs para proyectos",
+          "  2. Networking — ampliar mi red profesional",
+          "  3. Ambas — colaborar y hacer networking",
+          "",
+          "Escribe el número de tu elección:",
+        ].join("\n"));
+      }
+    } else {
+      await vscode.commands.executeCommand("tp.login");
+    }
+  }
 
   /** Llamado por VS Code cuando la vista del panel se hace visible. */
   public resolveWebviewView(webviewView: vscode.WebviewView): void {
@@ -23,12 +65,34 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
       enableScripts: true,
       localResourceRoots: [this.extensionUri],
     };
-    webviewView.webview.html = this.getHtml();
 
     // Permite que cualquier módulo (listeners de Realtime) imprima aquí.
     setEmisor((texto) => this.imprimir(texto));
 
+    if (!this.yaAceptoConsentimiento()) {
+      webviewView.webview.html = this.getConsentHtml();
+    } else {
+      webviewView.webview.html = this.getHtml();
+    }
+
     webviewView.webview.onDidReceiveMessage(async (msg) => {
+      if (msg?.tipo === "consentimiento_aceptado") {
+        const granular = msg.granular ?? {
+          acepta_perfil: true,
+          acepta_stack: true,
+          acepta_readme: true,
+          acepta_matching: true,
+        };
+        setConsentimientoPendiente(granular);
+        await this.guardarConsentimiento();
+        webviewView.webview.html = this.getHtml();
+        if (!this.loginIntentado && !getUsuarioActual()) {
+          this.loginIntentado = true;
+          void this.loginSilenciosoOManual();
+        }
+        return;
+      }
+
       if (msg?.tipo === "comando" && typeof msg.texto === "string") {
         const respuesta = await ejecutarComando(msg.texto);
         if (respuesta && typeof respuesta === "object" && "modo" in respuesta) {
@@ -55,10 +119,10 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
       }
     });
 
-    // Primer arranque sin sesión: dispara el login automáticamente.
-    if (!this.loginIntentado && !getUsuarioActual()) {
+    // Si ya dio consentimiento, intentar login silencioso o disparar tp.login.
+    if (this.yaAceptoConsentimiento() && !this.loginIntentado && !getUsuarioActual()) {
       this.loginIntentado = true;
-      void vscode.commands.executeCommand("tp.login");
+      void this.loginSilenciosoOManual();
     }
   }
 
@@ -70,6 +134,126 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
   /** Da foco a la vista (usado por el comando mh.open). */
   public mostrar(): void {
     this.view?.show?.(true);
+  }
+
+  private getConsentHtml(): string {
+    const nonce = generarNonce();
+    return /* html */ `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TermPals — Consentimiento</title>
+</head>
+<body style="margin:0;background:#0a0d0a;font-family:'Courier New',Courier,monospace;color:#9ca3af;font-size:13px;line-height:1.9;padding:20px 24px;min-height:100vh;box-sizing:border-box;">
+  <div style="max-width:580px;">
+
+    <div style="color:#4ade80;margin-bottom:2px;">$ termpals --first-run</div>
+    <div style="color:#6b7280;margin-bottom:20px;">TermPals v0.1.0 — primera ejecución detectada</div>
+    <div style="border-top:1px solid #1a2a1a;margin-bottom:18px;"></div>
+
+    <div style="color:#d1fae5;margin-bottom:10px;">Para usar TermPals necesitamos tu consentimiento (RGPD / GDPR).</div>
+    <div style="color:#6b7280;margin-bottom:18px;">
+      Tus datos se almacenan en Supabase (servidores en EU). Podés eliminar tu
+      cuenta en cualquier momento con <span style="color:#4ade80;">/tp delete</span>.
+    </div>
+
+    <div style="color:#9ca3af;margin-bottom:10px;">── qué datos recopilamos ──────────────────────</div>
+
+    <div style="margin-bottom:6px;">
+      <input type="checkbox" id="cb-perfil" checked disabled
+        style="accent-color:#4ade80;margin-right:8px;" />
+      <label for="cb-perfil" style="color:#d4d4d4;">
+        Perfil de GitHub (nombre, avatar, ubicación)
+      </label>
+      <span style="color:#6b7280;font-size:11px;margin-left:6px;">— REQUERIDO</span>
+    </div>
+    <div style="margin-bottom:6px;">
+      <input type="checkbox" id="cb-stack" checked disabled
+        style="accent-color:#4ade80;margin-right:8px;" />
+      <label for="cb-stack" style="color:#d4d4d4;">
+        Stack tecnológico del workspace
+      </label>
+      <span style="color:#6b7280;font-size:11px;margin-left:6px;">— REQUERIDO para el matching</span>
+    </div>
+    <div style="margin-bottom:6px;">
+      <input type="checkbox" id="cb-readme"
+        style="accent-color:#4ade80;margin-right:8px;" />
+      <label for="cb-readme" style="color:#d4d4d4;">
+        README del proyecto
+      </label>
+      <span style="color:#6b7280;font-size:11px;margin-left:6px;">— OPCIONAL · podés cambiarlo con /tp readme toggle</span>
+    </div>
+    <div style="margin-bottom:18px;">
+      <input type="checkbox" id="cb-matching" checked disabled
+        style="accent-color:#4ade80;margin-right:8px;" />
+      <label for="cb-matching" style="color:#d4d4d4;">
+        Aparecer en búsquedas de otros usuarios
+      </label>
+      <span style="color:#6b7280;font-size:11px;margin-left:6px;">— REQUERIDO para usar la app</span>
+    </div>
+
+    <div style="color:#9ca3af;margin-bottom:10px;">── cómo usamos tus datos ──────────────────────</div>
+    <div style="color:#6b7280;margin-bottom:18px;padding-left:12px;border-left:2px solid #1a2a1a;">
+      Usamos tus datos únicamente para hacer matching con otros devs y mantener
+      tu perfil activo en la plataforma. No los vendemos ni compartimos con terceros.<br/>
+      Conservación: mientras mantengas cuenta activa. Se eliminan con /tp delete.
+    </div>
+
+    <div style="color:#9ca3af;margin-bottom:10px;">── tus derechos RGPD (Art. 15-22) ────────────</div>
+    <div style="color:#6b7280;margin-bottom:18px;padding-left:12px;border-left:2px solid #1a2a1a;">
+      Acceso · Rectificación · Supresión · Portabilidad · Oposición<br/>
+      Contacto: leodanielalvarezcordero@gmail.com<br/>
+      Base legal: consentimiento explícito (Art. 6.1.a)
+    </div>
+
+    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+      <button id="btn-aceptar"
+        style="background:#14532d;color:#4ade80;border:1px solid #16a34a;padding:8px 18px;font-family:inherit;font-size:13px;cursor:pointer;">
+        [1] acepto y quiero continuar
+      </button>
+      <button id="btn-leer-mas"
+        style="background:transparent;color:#6b7280;border:1px solid #374151;padding:8px 18px;font-family:inherit;font-size:13px;cursor:pointer;">
+        [2] leer política completa
+      </button>
+    </div>
+
+    <div id="politica" style="display:none;border:1px solid #1a2a1a;padding:14px;color:#6b7280;font-size:12px;line-height:1.7;margin-bottom:14px;">
+      <div style="color:#9ca3af;margin-bottom:8px;">Política de privacidad — TermPals</div>
+      <div>Responsable: TermPals (leodanielalvarezcordero@gmail.com)</div>
+      <div style="margin-top:6px;">Base legal: consentimiento explícito (RGPD Art. 6.1.a)</div>
+      <div style="margin-top:6px;">Transferencias: datos alojados en Supabase (EU-West). No se realizan transferencias fuera del EEE.</div>
+      <div style="margin-top:6px;">Derechos: podés ejercerlos escribiendo a leodanielalvarezcordero@gmail.com o usando /tp delete para eliminación completa.</div>
+      <div style="margin-top:6px;">Conservación: mientras la cuenta esté activa. Eliminación inmediata con /tp delete.</div>
+    </div>
+
+    <div style="color:#374151;font-size:11px;">
+      si no aceptás, podés cerrar esta ventana sin registrar ningún dato.
+    </div>
+  </div>
+  <script nonce="${nonce}">
+    const vscode = acquireVsCodeApi();
+    document.getElementById('btn-aceptar').addEventListener('click', function() {
+      const cbReadme = document.getElementById('cb-readme');
+      vscode.postMessage({
+        tipo: 'consentimiento_aceptado',
+        granular: {
+          acepta_perfil: true,
+          acepta_stack: true,
+          acepta_readme: cbReadme.checked,
+          acepta_matching: true
+        }
+      });
+    });
+    document.getElementById('btn-leer-mas').addEventListener('click', function() {
+      const pol = document.getElementById('politica');
+      pol.style.display = pol.style.display === 'none' ? 'block' : 'none';
+    });
+  </script>
+</body>
+</html>`;
   }
 
   private getHtml(): string {

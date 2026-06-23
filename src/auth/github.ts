@@ -13,7 +13,17 @@ import {
 } from "../supabase/proyectos";
 import { obtenerConversacionActiva } from "../supabase/conversaciones";
 import { iniciarChat } from "../websocket/chat";
-import { setUsuarioActual, cargarSesion, setOnboardingPaso } from "../state";
+import {
+  setUsuarioActual,
+  cargarSesion,
+  setOnboardingPaso,
+  getConsentimientoPendiente,
+  setConsentimientoPendiente,
+} from "../state";
+import {
+  obtenerVersionActiva,
+  registrarConsentimiento,
+} from "../supabase/consentimientos";
 
 /**
  * Flujo de GitHub OAuth para TermPals a través de un endpoint serverless en
@@ -32,6 +42,29 @@ const REDIRECT_URI = "https://termpals.vercel.app/api/callback";
 const SCOPES = "read:user user:email";
 const TIMEOUT_MS = 120_000;
 const STATE_KEY = "termpals.oauthState";
+const TOKEN_KEY = "termpals.github.token";
+
+/** Persiste el access token de GitHub en el almacén cifrado del OS. */
+export async function guardarToken(
+  context: vscode.ExtensionContext,
+  token: string,
+): Promise<void> {
+  await context.secrets.store(TOKEN_KEY, token);
+}
+
+/** Recupera el access token guardado, o undefined si no existe. */
+export async function obtenerTokenGuardado(
+  context: vscode.ExtensionContext,
+): Promise<string | undefined> {
+  return context.secrets.get(TOKEN_KEY);
+}
+
+/** Elimina el access token guardado (logout o token inválido). */
+export async function eliminarToken(
+  context: vscode.ExtensionContext,
+): Promise<void> {
+  await context.secrets.delete(TOKEN_KEY);
+}
 
 /** Resultado que el UriHandler entrega al login en curso. */
 type ResultadoCallback = { token: string } | { error: string };
@@ -84,6 +117,9 @@ export async function iniciarLoginGithub(
   await vscode.env.openExternal(vscode.Uri.parse(authUrl));
   const accessToken = await promesaToken;
 
+  // Persistir el token para restaurar sesión en futuros arranques.
+  await guardarToken(context, accessToken);
+
   // Vercel ya intercambió el code: usamos el access_token directamente.
   const perfil = await obtenerPerfil(accessToken);
 
@@ -107,6 +143,23 @@ export async function iniciarLoginGithub(
   // Bug 1: siempre refresca el estado completo desde Supabase para que
   // conversacion_activa_id y otros campos reflejen la BD, no la sesión anterior.
   usuario = (await obtenerUsuario(usuario.id)) ?? usuario;
+
+  // Registrar consentimiento GDPR si hay uno pendiente y el usuario aún no tiene uno activo.
+  const pendiente = getConsentimientoPendiente();
+  if (pendiente && !usuario.consentimiento_activo) {
+    const version = await obtenerVersionActiva();
+    if (version) {
+      await registrarConsentimiento(
+        usuario.id,
+        version.id,
+        "aceptado",
+        pendiente,
+        "0.1.0",
+      );
+      usuario.consentimiento_activo = true;
+    }
+    setConsentimientoPendiente(null);
+  }
 
   // Bug 2: persiste el workspace detectado para que buscarMatch() tenga datos reales.
   const proyecto = await detectarWorkspace();
@@ -207,6 +260,53 @@ function httpGet(
     });
     req.on("error", (err) => reject(err));
   });
+}
+
+/**
+ * Intenta restaurar la sesión usando el token guardado en secrets.
+ * Devuelve el Usuario si el token sigue siendo válido, o null si expiró/no existe.
+ * Elimina el token guardado cuando detecta que ya no es válido.
+ */
+export async function intentarLoginSilencioso(
+  context: vscode.ExtensionContext,
+): Promise<Usuario | null> {
+  const token = await obtenerTokenGuardado(context);
+  if (!token) { return null; }
+
+  try {
+    const perfil = await obtenerPerfil(token);
+    if (!perfil.id) { throw new Error("Token inválido"); }
+
+    let usuario = await obtenerUsuarioPorGithubId(String(perfil.id));
+    if (!usuario) { throw new Error("Usuario no encontrado en Supabase"); }
+
+    usuario = (await obtenerUsuario(usuario.id)) ?? usuario;
+    await cargarSesion(usuario);
+
+    if (usuario.conversacion_activa_id) {
+      const conv = await obtenerConversacionActiva(usuario.id);
+      if (conv) {
+        const otroId = conv.usuario_a === usuario.id ? conv.usuario_b : conv.usuario_a;
+        const otro = await obtenerUsuario(otroId);
+        iniciarChat(conv.id, usuario.id, otro?.github_login ?? otroId);
+      }
+    }
+
+    if (usuario.busca === null || usuario.busca === undefined) {
+      setOnboardingPaso("busca");
+    }
+
+    setUsuarioActual(usuario);
+    return usuario;
+  } catch {
+    await eliminarToken(context);
+    return null;
+  }
+}
+
+/** Consulta el perfil del usuario en GitHub. Exportado como alias público. */
+export async function obtenerPerfilGithub(token: string): Promise<PerfilGithub> {
+  return obtenerPerfil(token);
 }
 
 /** Consulta el perfil del usuario en GitHub. */

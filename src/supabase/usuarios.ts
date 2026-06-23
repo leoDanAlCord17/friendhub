@@ -201,3 +201,50 @@ export async function guardarInteresPro(
     throw error;
   }
 }
+
+/**
+ * Elimina todos los datos del usuario en orden correcto de FK.
+ * Incluye la limpieza de conversacion_activa_id para desbloquear la FK
+ * de conversaciones antes de eliminar esas filas.
+ */
+export async function eliminarCuenta(usuario_id: string): Promise<void> {
+  const db = getSupabase();
+
+  // 0. Romper FKs circulares desde usuarios antes de eliminar tablas referenciadas
+  await db
+    .from("usuarios")
+    .update({ conversacion_activa_id: null, consentimiento_id: null })
+    .eq("id", usuario_id);
+
+  // 1. descartados (ambas direcciones)
+  await db.from("descartados").delete().eq("usuario_id", usuario_id);
+  await db.from("descartados").delete().eq("descartado_id", usuario_id);
+
+  // 2. amigos (ambas direcciones)
+  await db.from("amigos").delete().eq("usuario_id", usuario_id);
+  await db.from("amigos").delete().eq("amigo_id", usuario_id);
+
+  // 3. interes_pro
+  await db.from("interes_pro").delete().eq("usuario_id", usuario_id);
+
+  // 4. feedback
+  await db.from("feedback").delete().eq("usuario_id", usuario_id);
+
+  // 5. invitaciones (ambas direcciones)
+  await db.from("invitaciones").delete().eq("de_usuario", usuario_id);
+  await db.from("invitaciones").delete().eq("para_usuario", usuario_id);
+
+  // 6. conversaciones (ambas posiciones)
+  await db.from("conversaciones").delete().eq("usuario_a", usuario_id);
+  await db.from("conversaciones").delete().eq("usuario_b", usuario_id);
+
+  // 7. proyectos
+  await db.from("proyectos").delete().eq("usuario_id", usuario_id);
+
+  // 8. consentimientos
+  await db.from("consentimientos").delete().eq("usuario_id", usuario_id);
+
+  // 9. usuario
+  const { error } = await db.from("usuarios").delete().eq("id", usuario_id);
+  if (error) { throw error; }
+}

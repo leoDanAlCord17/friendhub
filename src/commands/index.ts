@@ -24,6 +24,8 @@ import {
   setOnboardingDatos,
   getEsperandoRespuestaPro,
   setEsperandoRespuestaPro,
+  getEsperandoConfirmacionDelete,
+  setEsperandoConfirmacionDelete,
 } from "../state";
 import { detectarWorkspace, obtenerProyectoActivo, crearOActualizarProyecto } from "../supabase/proyectos";
 import {
@@ -49,6 +51,18 @@ import {
 import { calcularCompatibilidad } from "../compatibility/score";
 import { escucharInvitaciones, iniciarChat, enviarMensaje, enviarMensajeSistema } from "../websocket/chat";
 import { crearFeedback } from "../supabase/feedback";
+import { eliminarToken } from "../auth/github";
+import { eliminarCuenta } from "../supabase/usuarios";
+
+/**
+ * Contexto de extensión inyectado al activar (necesario para logout/delete).
+ * Se inicializa en extension.ts mediante configurarContextComandos().
+ */
+let _ctx: vscode.ExtensionContext | undefined;
+
+export function configurarContextComandos(ctx: vscode.ExtensionContext): void {
+  _ctx = ctx;
+}
 
 /**
  * Registro de los comandos `/tp` del chat de TermPals. Cada handler recibe
@@ -551,6 +565,35 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     await crearFeedback(yo.id, "sugerencia", mensaje, yo.github_login);
     return "  ✓ gracias por la idea, la vamos a tener en cuenta.";
   },
+
+  /** /tp logout — cierra la sesión y elimina el token guardado. */
+  logout: async () => {
+    const yo = getUsuarioActual();
+    if (!yo) {
+      return "  no hay sesión activa.";
+    }
+    if (_ctx) { await eliminarToken(_ctx); }
+    setUsuarioActual(null);
+    return "  sesión cerrada. escribe /tp login para volver a conectar.";
+  },
+
+  /** /tp delete — inicia el flujo de eliminación de cuenta con confirmación. */
+  delete: async () => {
+    const yo = requiereUsuario();
+    if (typeof yo === "string") {
+      return yo;
+    }
+    setEsperandoConfirmacionDelete(true);
+    return [
+      "  ¿seguro que querés eliminar tu cuenta?",
+      "",
+      "  esto eliminará todos tus datos de TermPals:",
+      "  conversaciones, matches, amigos y perfil.",
+      "",
+      "  escribe  CONFIRMAR  para continuar",
+      "  o cualquier otra cosa para cancelar",
+    ].join("\n");
+  },
 };
 
 /** Lista de comandos válidos. */
@@ -566,6 +609,22 @@ const PREFIJO_BIO = "__BIO__:";
 export async function ejecutarComando(
   linea: string,
 ): Promise<ResultadoComando | null> {
+  if (getEsperandoConfirmacionDelete()) {
+    setEsperandoConfirmacionDelete(false);
+    if (linea.trim() === "CONFIRMAR") {
+      const yo = getUsuarioActual();
+      if (!yo) { return "Error de sesión."; }
+      await eliminarCuenta(yo.id);
+      if (_ctx) { await eliminarToken(_ctx); }
+      setUsuarioActual(null);
+      return [
+        "  ✓ cuenta eliminada.",
+        "  gracias por haber usado TermPals.",
+      ].join("\n");
+    }
+    return "  cancelado. tu cuenta sigue activa.";
+  }
+
   if (getEsperandoRespuestaPro()) {
     const opcion = linea.trim();
 
@@ -792,6 +851,8 @@ function textoAyuda(): string {
     "  /tp clear               Limpia la pantalla",
     "  /tp bug <mensaje>       Reporta un problema",
     "  /tp sugerencia <msg>    Propone una mejora",
+    "  /tp logout              Cierra tu sesión",
+    "  /tp delete              Elimina tu cuenta",
     "  /tp help                Muestra esta ayuda",
     "",
     "  Durante el onboarding:",

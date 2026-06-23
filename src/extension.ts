@@ -7,6 +7,7 @@ import {
 import { hayCredenciales } from "./supabase/client";
 import { iniciarLoginGithub, manejarCallback } from "./auth/github";
 import { getOnboardingPaso } from "./state";
+import { configurarContextComandos } from "./commands";
 
 /**
  * Punto de entrada de la extensión TermPals.
@@ -15,7 +16,8 @@ import { getOnboardingPaso } from "./state";
  * `mh.login` que ejecuta el flujo de GitHub OAuth.
  */
 export function activate(context: vscode.ExtensionContext): void {
-  const proveedor = new TermPalsPanel(context.extensionUri);
+  configurarContextComandos(context);
+  const proveedor = new TermPalsPanel(context.extensionUri, context);
 
   if (!hayCredenciales()) {
     void vscode.window.showWarningMessage(

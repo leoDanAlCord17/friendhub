@@ -19,6 +19,31 @@ export interface CamposControl {
 // Tablas
 // ---------------------------------------------------------------------------
 
+/** Tabla `terminos_versiones`. */
+export interface TerminosVersion {
+  id: string;
+  version: string;
+  descripcion: string;
+  contenido: string;
+  activa: boolean;
+  publicada_en: string;
+}
+
+/** Tabla `consentimientos`. Registro inmutable de cada acción de consentimiento. */
+export interface Consentimiento {
+  id: string;
+  usuario_id: string;
+  version_id: string;
+  accion: "aceptado" | "rechazado" | "retirado" | "actualizado_aceptado";
+  acepta_perfil: boolean;
+  acepta_stack: boolean;
+  acepta_readme: boolean;
+  acepta_matching: boolean;
+  extension_version: string | null;
+  creado_en: string;
+  creado_por: string;
+}
+
 /** Tabla `usuarios`. */
 export interface Usuario extends CamposControl {
   github_id: string;
@@ -35,6 +60,9 @@ export interface Usuario extends CamposControl {
   conversacion_activa_id: string | null;
   searches_hoy: number;
   ultima_busqueda_en: string | null;
+  consentimiento_activo: boolean;
+  consentimiento_id: string | null;
+  consentimiento_fecha: string | null;
 }
 
 /** Tabla `proyectos`. */
@@ -138,7 +166,9 @@ export type ComandoTp =
   | "reject"
   | "read"
   | "bug"
-  | "sugerencia";
+  | "sugerencia"
+  | "logout"
+  | "delete";
 
 /** Objeto de control que un comando puede devolver al panel. */
 export interface RespuestaModo {
