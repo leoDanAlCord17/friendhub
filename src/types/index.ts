@@ -188,9 +188,10 @@ export type ComandoHandler = (
   args: string[],
 ) => Promise<ResultadoComando> | ResultadoComando;
 
-/** Interfaz mínima del panel para mostrar spinner sin importar TermPalsPanel directamente. */
-export interface ISpinner {
+/** Interfaz mínima del panel para evitar importación circular desde commands. */
+export interface IPanel {
   iniciarSpinner(texto: string): void;
   actualizarSpinner(texto: string): void;
   detenerSpinner(): void;
+  mostrarConsentimientoSiNecesario(): void;
 }

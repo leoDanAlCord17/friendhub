@@ -5,7 +5,7 @@ import {
   ResultadoComando,
   Proyecto,
   Usuario,
-  ISpinner,
+  IPanel,
 } from "../types";
 import {
   getUsuarioActual,
@@ -65,8 +65,8 @@ export function configurarContextComandos(ctx: vscode.ExtensionContext): void {
   _ctx = ctx;
 }
 
-let _panel: ISpinner | null = null;
-export function setProveedorPanel(p: ISpinner): void {
+let _panel: IPanel | null = null;
+export function setProveedorPanel(p: IPanel): void {
   _panel = p;
 }
 
@@ -96,13 +96,16 @@ function conSpinner<T>(texto: string, operacion: Promise<T>, delayMs = 0): Promi
  */
 
 const handlers: Record<ComandoTp, ComandoHandler> = {
-  /** /tp login — inicia el flujo de GitHub OAuth. */
+  /** /tp login — muestra los términos primero, luego inicia el OAuth. */
   login: async () => {
-    if (getUsuarioActual()) {
-      return `  ya tienes sesión como @${getUsuarioActual()?.github_login}.`;
+    const yo = getUsuarioActual();
+    if (yo) {
+      return `  ya tienes sesión como @${yo.github_login}.`;
     }
-    await vscode.commands.executeCommand("tp.login");
-    return "  abriendo el navegador para conectar tu GitHub...";
+    // Siempre mostrar los términos antes de abrir el browser:
+    // puede ser un usuario nuevo o uno que hizo logout.
+    _panel?.mostrarConsentimientoSiNecesario();
+    return "";
   },
 
   /** /tp search — busca un desarrollador compatible disponible. */
@@ -607,13 +610,17 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     return "  ✓ gracias por la idea, la vamos a tener en cuenta.";
   },
 
-  /** /tp logout — cierra la sesión y elimina el token guardado. */
+  /** /tp logout — cierra la sesión, elimina el token y limpia el flag de consentimiento. */
   logout: async () => {
     const yo = getUsuarioActual();
     if (!yo) {
       return "  no hay sesión activa.";
     }
-    if (_ctx) { await eliminarToken(_ctx); }
+    if (_ctx) {
+      await eliminarToken(_ctx);
+      // Limpiar el flag de consentimiento para que el próximo usuario vea los términos.
+      await _ctx.globalState.update("termpals.consent.shown", false);
+    }
     setUsuarioActual(null);
     return "  sesión cerrada. escribe /tp login para volver a conectar.";
   },

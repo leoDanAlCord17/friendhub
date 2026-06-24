@@ -172,6 +172,11 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
     this.view?.show?.(true);
   }
 
+  /** Muestra la pantalla de consentimiento (llamado desde /tp login cuando no hay sesión). */
+  public mostrarConsentimientoSiNecesario(): void {
+    this.view!.webview.html = this.getConsentHtml();
+  }
+
   private getConsentHtml(): string {
     const nonce = generarNonce();
     return /* html */ `<!DOCTYPE html>
