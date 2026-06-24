@@ -7,7 +7,7 @@ import {
 import { hayCredenciales } from "./supabase/client";
 import { iniciarLoginGithub, manejarCallback } from "./auth/github";
 import { getOnboardingPaso } from "./state";
-import { configurarContextComandos } from "./commands";
+import { configurarContextComandos, setProveedorPanel } from "./commands";
 
 /**
  * Punto de entrada de la extensión TermPals.
@@ -18,6 +18,7 @@ import { configurarContextComandos } from "./commands";
 export function activate(context: vscode.ExtensionContext): void {
   configurarContextComandos(context);
   const proveedor = new TermPalsPanel(context.extensionUri, context);
+  setProveedorPanel(proveedor);
 
   if (!hayCredenciales()) {
     void vscode.window.showWarningMessage(
@@ -58,7 +59,7 @@ export function activate(context: vscode.ExtensionContext): void {
             '  2. Networking — ampliar mi red profesional',
             '  3. Ambas — colaborar y hacer networking',
             '',
-            'Escribe el número de tu elección:',
+            'Escribe el número de tu elección y pulsa Enter:',
           ].join('\n'));
         }
       } catch (err) {

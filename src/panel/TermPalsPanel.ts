@@ -18,14 +18,40 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
   private loginIntentado = false;
 
+  private spinnerInterval: ReturnType<typeof setInterval> | null = null;
+  private readonly SPINNER_FRAMES = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
+  private spinnerIndex = 0;
+
+  public iniciarSpinner(texto: string): void {
+    this.spinnerIndex = 0;
+    this.view?.webview.postMessage({ tipo: 'spinner_iniciar', texto });
+    this.spinnerInterval = setInterval(() => {
+      const frame = this.SPINNER_FRAMES[this.spinnerIndex % this.SPINNER_FRAMES.length];
+      this.view?.webview.postMessage({ tipo: 'spinner_frame', frame, texto });
+      this.spinnerIndex++;
+    }, 100);
+  }
+
+  public actualizarSpinner(texto: string): void {
+    this.view?.webview.postMessage({
+      tipo: 'spinner_frame',
+      frame: this.SPINNER_FRAMES[this.spinnerIndex % this.SPINNER_FRAMES.length],
+      texto,
+    });
+  }
+
+  public detenerSpinner(): void {
+    if (this.spinnerInterval) {
+      clearInterval(this.spinnerInterval);
+      this.spinnerInterval = null;
+    }
+    this.view?.webview.postMessage({ tipo: 'spinner_fin' });
+  }
+
   constructor(
     private readonly extensionUri: vscode.Uri,
     private readonly context: vscode.ExtensionContext,
   ) {}
-
-  private yaAceptoConsentimiento(): boolean {
-    return this.context.globalState.get(TermPalsPanel.CONSENT_KEY, false);
-  }
 
   private async guardarConsentimiento(): Promise<void> {
     await this.context.globalState.update(TermPalsPanel.CONSENT_KEY, true);
@@ -36,25 +62,39 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
   }
 
   private async loginSilenciosoOManual(): Promise<void> {
+    this.iniciarSpinner('verificando sesión guardada...');
+
     const usuario = await intentarLoginSilencioso(this.context);
+
     if (usuario) {
+      if (!usuario.consentimiento_activo) {
+        this.detenerSpinner();
+        this.view!.webview.html = this.getConsentHtml();
+        return;
+      }
+      this.actualizarSpinner('cargando tu perfil...');
+      await new Promise(r => setTimeout(r, 300));
+      this.detenerSpinner();
       this.imprimir(`  sesión restaurada como @${usuario.github_login}`);
       escucharInvitacionesEntrantes(usuario.id);
-      if (getOnboardingPaso() === "busca") {
+      if (getOnboardingPaso() === 'busca') {
         this.imprimir([
-          `¡Bienvenido de vuelta, @${usuario.github_login}!`,
-          "",
-          "Paso 1 de 3 — ¿Qué buscás en TermPals?",
-          "",
-          "  1. Colaborar — encontrar devs para proyectos",
-          "  2. Networking — ampliar mi red profesional",
-          "  3. Ambas — colaborar y hacer networking",
-          "",
-          "Escribe el número de tu elección:",
-        ].join("\n"));
+          `¡Bienvenido a TermPals, @${usuario.github_login}!`,
+          '',
+          'Vamos a configurar tu perfil rápido.',
+          '',
+          'Paso 1 de 3 — ¿Qué buscás en TermPals?',
+          '',
+          '  1. Colaborar — encontrar devs para proyectos',
+          '  2. Networking — ampliar mi red profesional',
+          '  3. Ambas — colaborar y hacer networking',
+          '',
+          'Escribe el número de tu elección y pulsa Enter:',
+        ].join('\n'));
       }
     } else {
-      await vscode.commands.executeCommand("tp.login");
+      this.detenerSpinner();
+      this.view!.webview.html = this.getConsentHtml();
     }
   }
 
@@ -69,11 +109,8 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
     // Permite que cualquier módulo (listeners de Realtime) imprima aquí.
     setEmisor((texto) => this.imprimir(texto));
 
-    if (!this.yaAceptoConsentimiento()) {
-      webviewView.webview.html = this.getConsentHtml();
-    } else {
-      webviewView.webview.html = this.getHtml();
-    }
+    // Mostrar el panel terminal inmediatamente para que no quede en blanco.
+    webviewView.webview.html = this.getHtml();
 
     webviewView.webview.onDidReceiveMessage(async (msg) => {
       if (msg?.tipo === "consentimiento_aceptado") {
@@ -86,9 +123,8 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
         setConsentimientoPendiente(granular);
         await this.guardarConsentimiento();
         webviewView.webview.html = this.getHtml();
-        if (!this.loginIntentado && !getUsuarioActual()) {
-          this.loginIntentado = true;
-          void this.loginSilenciosoOManual();
+        if (!getUsuarioActual()) {
+          void vscode.commands.executeCommand("tp.login");
         }
         return;
       }
@@ -119,8 +155,8 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
       }
     });
 
-    // Si ya dio consentimiento, intentar login silencioso o disparar tp.login.
-    if (this.yaAceptoConsentimiento() && !this.loginIntentado && !getUsuarioActual()) {
+    // Login en background: decide si mostrar consentimiento o restaurar sesión.
+    if (!this.loginIntentado && !getUsuarioActual()) {
       this.loginIntentado = true;
       void this.loginSilenciosoOManual();
     }
@@ -146,6 +182,22 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
     content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TermPals — Consentimiento</title>
+  <style>
+    body { padding-bottom: 100px; }
+    .botones-fijos {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #0a0d0a;
+      border-top: 1px solid #1a3a1a;
+      padding: 16px 32px;
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      z-index: 100;
+    }
+  </style>
 </head>
 <body style="margin:0;background:#0a0d0a;font-family:'Courier New',Courier,monospace;color:#9ca3af;font-size:13px;line-height:1.9;padding:20px 24px;min-height:100vh;box-sizing:border-box;">
   <div style="max-width:580px;">
@@ -209,17 +261,6 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
       Base legal: consentimiento explícito (Art. 6.1.a)
     </div>
 
-    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-      <button id="btn-aceptar"
-        style="background:#14532d;color:#4ade80;border:1px solid #16a34a;padding:8px 18px;font-family:inherit;font-size:13px;cursor:pointer;">
-        [1] acepto y quiero continuar
-      </button>
-      <button id="btn-leer-mas"
-        style="background:transparent;color:#6b7280;border:1px solid #374151;padding:8px 18px;font-family:inherit;font-size:13px;cursor:pointer;">
-        [2] leer política completa
-      </button>
-    </div>
-
     <div id="politica" style="display:none;border:1px solid #1a2a1a;padding:14px;color:#6b7280;font-size:12px;line-height:1.7;margin-bottom:14px;">
       <div style="color:#9ca3af;margin-bottom:8px;">Política de privacidad — TermPals</div>
       <div>Responsable: TermPals (leodanielalvarezcordero@gmail.com)</div>
@@ -232,6 +273,16 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
     <div style="color:#374151;font-size:11px;">
       si no aceptás, podés cerrar esta ventana sin registrar ningún dato.
     </div>
+  </div>
+  <div class="botones-fijos">
+    <button id="btn-aceptar"
+      style="background:#14532d;color:#4ade80;border:1px solid #16a34a;padding:8px 18px;font-family:inherit;font-size:13px;cursor:pointer;">
+      [1] acepto y quiero continuar
+    </button>
+    <button id="btn-leer-mas"
+      style="background:transparent;color:#6b7280;border:1px solid #374151;padding:8px 18px;font-family:inherit;font-size:13px;cursor:pointer;">
+      [2] leer política completa
+    </button>
   </div>
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
@@ -461,6 +512,8 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
       }
     });
 
+    let spinnerEl = null;
+
     window.addEventListener('message', (e) => {
       if (!e.data) { return; }
       if (e.data.tipo === 'salida') { imprimir(e.data.texto); }
@@ -469,6 +522,26 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
       }
       else if (e.data.tipo === 'accion' && e.data.accion === 'clear') {
         limpiarPantalla();
+      }
+      else if (e.data.tipo === 'spinner_iniciar') {
+        spinnerEl = document.createElement('div');
+        spinnerEl.id = 'tp-spinner';
+        spinnerEl.style.cssText = 'color:#6b7280;font-family:monospace;font-size:13px;padding:2px 0;';
+        spinnerEl.textContent = '⠋  ' + e.data.texto;
+        output.appendChild(spinnerEl);
+        output.scrollTop = output.scrollHeight;
+      }
+      else if (e.data.tipo === 'spinner_frame') {
+        const el = document.getElementById('tp-spinner');
+        if (el) {
+          el.textContent = e.data.frame + '  ' + e.data.texto;
+          output.scrollTop = output.scrollHeight;
+        }
+      }
+      else if (e.data.tipo === 'spinner_fin') {
+        const el = document.getElementById('tp-spinner');
+        if (el) { el.remove(); }
+        spinnerEl = null;
       }
     });
 

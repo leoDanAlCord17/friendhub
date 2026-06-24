@@ -5,6 +5,7 @@ import {
   ResultadoComando,
   Proyecto,
   Usuario,
+  ISpinner,
 } from "../types";
 import {
   getUsuarioActual,
@@ -64,6 +65,31 @@ export function configurarContextComandos(ctx: vscode.ExtensionContext): void {
   _ctx = ctx;
 }
 
+let _panel: ISpinner | null = null;
+export function setProveedorPanel(p: ISpinner): void {
+  _panel = p;
+}
+
+function conSpinner<T>(texto: string, operacion: Promise<T>, delayMs = 0): Promise<T> {
+  let spinnerActivo = false;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  if (delayMs > 0) {
+    timer = setTimeout(() => {
+      spinnerActivo = true;
+      _panel?.iniciarSpinner(texto);
+    }, delayMs);
+  } else {
+    spinnerActivo = true;
+    _panel?.iniciarSpinner(texto);
+  }
+
+  return operacion.finally(() => {
+    if (timer) { clearTimeout(timer); }
+    if (spinnerActivo) { _panel?.detenerSpinner(); }
+  });
+}
+
 /**
  * Registro de los comandos `/tp` del chat de TermPals. Cada handler recibe
  * los argumentos (sin el `/tp <comando>`) y devuelve el texto a renderizar.
@@ -86,7 +112,10 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       return base;
     }
 
-    const limite = await verificarYConsumirBusqueda(base.id);
+    const limite = await conSpinner(
+      'verificando búsquedas disponibles...',
+      verificarYConsumirBusqueda(base.id),
+    );
     if (!limite.permitido) {
       setEsperandoRespuestaPro(true);
       return [
@@ -114,7 +143,10 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
 
     const miStack = await detectarWorkspace();
-    const resultado = await buscarMatch(yo.id, yo.busca ?? "colaborar");
+    const resultado = await conSpinner(
+      'buscando match compatible...',
+      buscarMatch(yo.id, yo.busca ?? 'colaborar'),
+    );
     if (!resultado) {
       return "No hay desarrolladores disponibles ahora mismo. Intenta más tarde.";
     }
@@ -158,7 +190,11 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     // Usa el caché de amigos; solo refetch si está vacío.
     let amigos = getAmigosCache();
     if (amigos.length === 0) {
-      const relaciones = await obtenerAmigos(yo.id);
+      const relaciones = await conSpinner(
+        'cargando tu lista de amigos...',
+        obtenerAmigos(yo.id),
+        2000,
+      );
       const usuarios = await Promise.all(
         relaciones.map((a) => obtenerUsuario(a.amigo_id)),
       );
@@ -244,7 +280,11 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
     const yo = await refrescarUsuario(base);
     // Workspace en vivo; el stack guardado viene del proyecto cacheado.
-    const info = await detectarWorkspace();
+    const info = await conSpinner(
+      'analizando workspace...',
+      detectarWorkspace(),
+      2000,
+    );
     const proyecto = getProyectoActual();
     const stackFuente = proyecto?.stack ?? info.stack ?? [];
     const stack = stackFuente.slice(0, 3).join(" · ") || "—";
@@ -471,11 +511,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
 
     const miProyecto = await obtenerProyectoActivo(yo.id);
-    const invit = await crearInvitacion(
-      yo.id,
-      match.usuario.id,
-      miProyecto?.readme ?? "",
-      getPuntajeActual(),
+    const invit = await conSpinner(
+      'enviando invitación...',
+      crearInvitacion(yo.id, match.usuario.id, miProyecto?.readme ?? '', getPuntajeActual()),
     );
 
     escucharInvitaciones(
@@ -511,7 +549,10 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     await actualizarConversacionActiva(yo.id, conv.id);
     // El conversacion_id viaja en el payload del evento Realtime para que
     // el invitador lo use directamente sin race condition.
-    await responderInvitacion(pend.invitacion.id, "aceptada", conv.id);
+    await conSpinner(
+      'aceptando invitación...',
+      responderInvitacion(pend.invitacion.id, "aceptada", conv.id),
+    );
     yo.conversacion_activa_id = conv.id;
     setUsuarioActual(yo);
     iniciarChat(conv.id, yo.id, pend.username);
@@ -697,7 +738,7 @@ Paso 3 de 3 — Compartir tu README
   1. Sí, compartir mi README con mis matches
   2. No, solo compartir mi stack técnico (sin README)
 
-  Escribe el número de tu elección:`;
+  Escribe el número de tu elección y pulsa Enter:`;
     }
 
     if (linea.length > 280) {
@@ -716,7 +757,7 @@ Paso 3 de 3 — Compartir tu README
   1. Sí, compartir mi README con mis matches
   2. No, solo compartir mi stack técnico (sin README)
 
-  Escribe el número de tu elección:`;
+  Escribe el número de tu elección y pulsa Enter:`;
   }
 
   if (paso === 'readme') {

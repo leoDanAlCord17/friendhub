@@ -187,3 +187,10 @@ export type ResultadoComando = string | RespuestaModo | RespuestaAccion;
 export type ComandoHandler = (
   args: string[],
 ) => Promise<ResultadoComando> | ResultadoComando;
+
+/** Interfaz mínima del panel para mostrar spinner sin importar TermPalsPanel directamente. */
+export interface ISpinner {
+  iniciarSpinner(texto: string): void;
+  actualizarSpinner(texto: string): void;
+  detenerSpinner(): void;
+}
