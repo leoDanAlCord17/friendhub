@@ -156,12 +156,11 @@ export async function actualizarBio(id: string, bio: string): Promise<void> {
   }
 }
 
-/** Lista los usuarios disponibles para conectar. */
+/** Lista los usuarios activos disponibles para conectar. */
 export async function listarDisponibles(): Promise<Usuario[]> {
   const { data, error } = await getSupabase()
     .from(TABLA)
     .select("*")
-    .eq("disponible", true)
     .eq("estatus", true);
   if (error) {
     throw error;
@@ -194,12 +193,24 @@ export async function guardarInteresPro(
   const { error } = await getSupabase()
     .from("interes_pro")
     .upsert(
-      { usuario_id, interesado, actualizado_por: "sistema" },
+      { usuario_id, interesado, actualizado_por: null },
       { onConflict: "usuario_id" },
     );
   if (error) {
     throw error;
   }
+}
+
+/** Actualiza la zona horaria detectada del cliente. */
+export async function actualizarZonaHoraria(
+  id: string,
+  zona_horaria: string,
+): Promise<void> {
+  const { error } = await getSupabase()
+    .from(TABLA)
+    .update({ zona_horaria, actualizado_en: new Date().toISOString() })
+    .eq("id", id);
+  if (error) { throw error; }
 }
 
 /**

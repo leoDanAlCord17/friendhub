@@ -10,14 +10,12 @@ const TABLA = "amigos";
 export async function proponerAmistad(
   usuario_a_id: string,
   usuario_b_id: string,
-  conversacion_id: string,
 ): Promise<Amigo> {
   const { data, error } = await getSupabase()
     .from(TABLA)
     .insert({
       usuario_id: usuario_a_id,
       amigo_id: usuario_b_id,
-      conversacion_id,
       estado: 'pendiente',
     })
     .select("*")

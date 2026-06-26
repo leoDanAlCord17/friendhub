@@ -20,15 +20,20 @@ const PUNTOS_ZONA = 15;
 /** Margen máximo de diferencia horaria considerado compatible. */
 const HORAS_MARGEN = 3;
 
-/** Calcula la compatibilidad (0-100) y su desglose entre dos proyectos. */
+/**
+ * Calcula la compatibilidad (0-100) y su desglose entre dos proyectos.
+ * zonaA / zonaB provienen del objeto Usuario (no del proyecto).
+ */
 export function calcularCompatibilidad(
   a: Proyecto,
   b: Proyecto,
+  zonaA?: string | null,
+  zonaB?: string | null,
 ): ResultadoCompatibilidad {
   const lenguaje = lenguajeCoincide(a, b) ? PUNTOS_LENGUAJE : 0;
   const dominio = dominioSimilar(a, b) ? PUNTOS_DOMINIO : 0;
   const tests = a.tiene_tests && b.tiene_tests ? PUNTOS_TESTS : 0;
-  const zonaHoraria = zonaCompatible(a, b) ? PUNTOS_ZONA : 0;
+  const zonaHoraria = zonaCompatible(zonaA, zonaB) ? PUNTOS_ZONA : 0;
 
   const puntaje = lenguaje + dominio + tests + zonaHoraria;
 
@@ -58,9 +63,12 @@ function dominioSimilar(a: Proyecto, b: Proyecto): boolean {
 }
 
 /** La diferencia de offset UTC entre ambas zonas es ≤ ±3 horas. */
-function zonaCompatible(a: Proyecto, b: Proyecto): boolean {
-  const offsetA = offsetUtc(a.zona_horaria);
-  const offsetB = offsetUtc(b.zona_horaria);
+function zonaCompatible(
+  zonaA: string | null | undefined,
+  zonaB: string | null | undefined,
+): boolean {
+  const offsetA = offsetUtc(zonaA ?? null);
+  const offsetB = offsetUtc(zonaB ?? null);
   if (offsetA === null || offsetB === null) {
     return false;
   }

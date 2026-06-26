@@ -6,6 +6,7 @@ import {
   obtenerUsuarioPorGithubId,
   obtenerUsuario,
   crearUsuario,
+  actualizarZonaHoraria,
 } from "../supabase/usuarios";
 import {
   detectarWorkspace,
@@ -131,12 +132,10 @@ export async function iniciarLoginGithub(
       nombre_usuario: perfil.login,
       nombre: perfil.name ?? perfil.login,
       avatar_url: perfil.avatar_url,
-      location: perfil.location ?? null,
+      locacion: perfil.location ?? null,
       email: perfil.email ?? null,
       busca: null,
       estatus: true,
-      creado_por: perfil.login,
-      actualizado_por: perfil.login,
     });
   }
 
@@ -161,14 +160,19 @@ export async function iniciarLoginGithub(
     setConsentimientoPendiente(null);
   }
 
+  // Actualizar zona horaria detectada en el cliente (puede cambiar si el usuario viaja).
+  const zonaHoraria = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  await actualizarZonaHoraria(usuario.id, zonaHoraria);
+  usuario.zona_horaria = zonaHoraria;
+
   // Bug 2: persiste el workspace detectado para que buscarMatch() tenga datos reales.
   const proyecto = await detectarWorkspace();
   if (proyecto.lenguajes && proyecto.lenguajes.length > 0) {
     await crearOActualizarProyecto({
       ...proyecto,
       usuario_id: usuario.id,
-      creado_por: usuario.github_login,
-      actualizado_por: usuario.github_login,
+      creado_por: usuario.id,
+      actualizado_por: usuario.id,
     });
   }
 

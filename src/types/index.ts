@@ -53,10 +53,9 @@ export interface Usuario extends CamposControl {
   avatar_url: string | null;
   email: string | null;
   bio: string | null;
-  location: string | null;
   zona_horaria: string | null;
-  disponible: boolean;
   busca: "colaborar" | "networking" | "ambas" | null;
+  locacion: string | null;
   conversacion_activa_id: string | null;
   searches_hoy: number;
   ultima_busqueda_en: string | null;
@@ -73,7 +72,6 @@ export interface Proyecto extends CamposControl {
   lenguajes: string[];
   dominio: string | null;
   tiene_tests: boolean;
-  zona_horaria: string | null;
   repo_url: string | null;
   stack: string[];
   readme: string | null;
@@ -107,7 +105,6 @@ export interface Invitacion extends CamposControl {
 export interface Amigo extends CamposControl {
   usuario_id: string;
   amigo_id: string;
-  conversacion_id: string | null;
   estado: "pendiente" | "confirmado";
 }
 
