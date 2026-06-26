@@ -7,6 +7,7 @@ import {
   Usuario,
   IPanel,
 } from "../types";
+import { t } from "../i18n";
 import {
   getUsuarioActual,
   setUsuarioActual,
@@ -90,20 +91,13 @@ function conSpinner<T>(texto: string, operacion: Promise<T>, delayMs = 0): Promi
   });
 }
 
-/**
- * Registro de los comandos `/tp` del chat de TermPals. Cada handler recibe
- * los argumentos (sin el `/tp <comando>`) y devuelve el texto a renderizar.
- */
-
 const handlers: Record<ComandoTp, ComandoHandler> = {
   /** /tp login — muestra los términos primero, luego inicia el OAuth. */
   login: async () => {
     const yo = getUsuarioActual();
     if (yo) {
-      return `  ya tienes sesión como @${yo.github_login}.`;
+      return t('session.already_active', yo.github_login);
     }
-    // Siempre mostrar los términos antes de abrir el browser:
-    // puede ser un usuario nuevo o uno que hizo logout.
     _panel?.mostrarConsentimientoSiNecesario();
     return "";
   },
@@ -116,42 +110,42 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
 
     const limite = await conSpinner(
-      'verificando búsquedas disponibles...',
+      t('search.verifying'),
       verificarYConsumirBusqueda(base.id),
     );
     if (!limite.permitido) {
       setEsperandoRespuestaPro(true);
       return [
-        "  ya usaste tus 4 búsquedas de hoy. Se renuevan en 24h.",
+        t('search.limit_reached'),
         "",
-        "  Estamos evaluando lanzar TermPals Pro:",
-        "    · búsquedas ilimitadas",
-        "    · historial de conversaciones (ya no se borran)",
-        "    · acceso prioritario a nuevas features",
+        t('pro.title'),
+        t('pro.feature1'),
+        t('pro.feature2'),
+        t('pro.feature3'),
         "",
-        "  ¿Pagarías por esto?",
+        t('pro.question'),
         "",
-        "    1. Sí, me interesaría",
-        "    2. No, prefiero la versión gratis",
-        "    3. Prefiero responder después",
+        t('pro.opt1'),
+        t('pro.opt2'),
+        t('pro.opt3'),
         "",
-        "  Escribe 1, 2, o 3:",
+        t('pro.prompt'),
       ].join("\n");
     }
 
     const yo = await refrescarUsuario(base);
     const activa = await obtenerConversacionActiva(yo.id);
     if (activa) {
-      return "Ya tienes una conversación activa. Usa /tp leave para salir.";
+      return t('search.active_conv');
     }
 
     const miStack = await detectarWorkspace();
     const resultado = await conSpinner(
-      'buscando match compatible...',
+      t('search.searching'),
       buscarMatch(yo.id, yo.busca ?? 'colaborar'),
     );
     if (!resultado) {
-      return "No hay desarrolladores disponibles ahora mismo. Intenta más tarde.";
+      return t('search.no_match');
     }
 
     const { usuario: match, nivelMatch } = resultado;
@@ -159,6 +153,8 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     const { puntaje } = calcularCompatibilidad(
       miStack as Proyecto,
       (proyectoMatch ?? {}) as Proyecto,
+      yo.zona_horaria,
+      match.zona_horaria,
     );
 
     setMatchActual({
@@ -171,7 +167,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     const postal =
       renderPostal(
         match.github_login,
-        match.location,
+        match.locacion,
         match.bio,
         proyectoMatch,
       ) + "\n\n";
@@ -179,7 +175,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     return (
       postal +
       formatoMatch(match, proyectoMatch, puntaje, nivelMatch) +
-      `\n\n  (te quedan ${limite.restantes} búsquedas hoy)`
+      `\n\n${t('search.remaining', limite.restantes)}`
     );
   },
 
@@ -190,11 +186,10 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       return yo;
     }
 
-    // Usa el caché de amigos; solo refetch si está vacío.
     let amigos = getAmigosCache();
     if (amigos.length === 0) {
       const relaciones = await conSpinner(
-        'cargando tu lista de amigos...',
+        t('friends.loading'),
         obtenerAmigos(yo.id),
         2000,
       );
@@ -205,7 +200,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       setAmigosCache(amigos);
     }
     if (amigos.length === 0) {
-      return "  aún no tienes amigos. usa /tp search para conocer devs.";
+      return t('friends.empty');
     }
 
     const cuerpo = amigos
@@ -213,13 +208,13 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       .join("\n");
 
     return [
-      "  ── tus amigos ────────────────────────",
+      t('friends.title'),
       "",
       cuerpo,
       "",
-      `  total: ${amigos.length} amigo${amigos.length === 1 ? "" : "s"}`,
-      "  usa /tp invite @username para iniciar chat",
-      "  ──────────────────────────────────────",
+      t('friends.total', amigos.length),
+      t('friends.invite_hint'),
+      t('friends.separator'),
     ].join("\n");
   },
 
@@ -231,7 +226,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
     const username = (args[0] ?? "").replace(/^@/, "");
     if (!username) {
-      return "Uso: /tp invite @username";
+      return t('invite.usage');
     }
 
     const amigos = await obtenerAmigos(yo.id);
@@ -240,12 +235,12 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     );
     const amigo = usuarios.find((u) => u?.github_login === username) ?? null;
     if (!amigo) {
-      return `  @${username} no está en tu lista de amigos.`;
+      return t('invite.not_friend', username);
     }
 
     const activa = await obtenerConversacionActiva(yo.id);
     if (activa) {
-      return "  ya tienes una conversación activa. usa /tp leave para salir primero.";
+      return t('connect.active_conv');
     }
 
     const [miProyecto, proyectoAmigo] = await Promise.all([
@@ -254,7 +249,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     ]);
     const puntaje =
       miProyecto && proyectoAmigo
-        ? calcularCompatibilidad(miProyecto, proyectoAmigo).puntaje
+        ? calcularCompatibilidad(miProyecto, proyectoAmigo, yo.zona_horaria, amigo.zona_horaria).puntaje
         : 0;
 
     const invit = await crearInvitacion(
@@ -267,8 +262,8 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     escucharInvitaciones(invit.id, yo.id, amigo.id, username, puntaje);
 
     return [
-      `  invitación enviada a @${username}.`,
-      "  esperando respuesta...",
+      t('invite.sent', username),
+      t('connect.waiting'),
     ].join("\n");
   },
 
@@ -282,9 +277,8 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       return base;
     }
     const yo = await refrescarUsuario(base);
-    // Workspace en vivo; el stack guardado viene del proyecto cacheado.
     const info = await conSpinner(
-      'analizando workspace...',
+      t('status.loading'),
       detectarWorkspace(),
       2000,
     );
@@ -293,8 +287,10 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     const stack = stackFuente.slice(0, 3).join(" · ") || "—";
 
     const readmeEstado = !proyecto
-      ? "sin configurar"
-      : proyecto.comparte_readme === false ? "privado" : "público";
+      ? t('status.readme_unset')
+      : proyecto.comparte_readme === false
+        ? t('status.readme_private')
+        : t('status.readme_public');
 
     const hoy = new Date().toISOString().slice(0, 10);
     const ultimaFecha = yo.ultima_busqueda_en
@@ -305,26 +301,26 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     const busquedasRestantes = Math.max(0, 4 - searchesActuales);
 
     const lineas = [
-      "  ── estado actual ─────────────────────",
+      t('status.title'),
       "",
-      `  usuario:   @${yo.github_login}`,
-      `  busca:     ${yo.busca ?? "—"}`,
-      "  sesión:    activa",
+      t('status.user', yo.github_login),
+      t('status.looking_for', yo.busca ?? "—"),
+      t('status.session'),
       "",
-      "  workspace detectado:",
-      `    lenguaje:  ${info.lenguajes?.[0] ?? "no detectado"}`,
-      `    dominio:   ${info.dominio ?? "no detectado"}`,
-      `    tests:     ${info.tiene_tests ? "sí" : "no"}`,
-      `    stack:     ${stack}`,
-      `    readme:    ${readmeEstado}`,
+      t('status.workspace'),
+      t('status.language', info.lenguajes?.[0] ?? "—"),
+      t('status.domain', info.dominio ?? "—"),
+      t('status.tests', info.tiene_tests ? t('bool.yes') : t('bool.no')),
+      t('status.stack', stack),
+      readmeEstado,
       "",
-      `  conversación activa:  ${yo.conversacion_activa_id ? "sí" : "no"}`,
-      `  amigos:               ${getAmigosCache().length}`,
-      `  búsquedas hoy:        ${busquedasRestantes}/4 restantes`,
-      "  ──────────────────────────────────────",
+      yo.conversacion_activa_id ? t('status.active_conv_yes') : t('status.active_conv_no'),
+      t('status.friends', getAmigosCache().length),
+      t('status.searches', busquedasRestantes),
+      t('status.separator'),
     ];
     if (proyecto) {
-      lineas.push("  /tp readme toggle → cambia el estatus de tu README");
+      lineas.push(t('status.readme_toggle'));
     }
     return lineas.join("\n");
   },
@@ -337,13 +333,12 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
     const conv = await obtenerConversacionActiva(yo.id);
     if (!conv) {
-      return "  no tienes una conversación activa.";
+      return t('add.no_conv');
     }
     const otroId = conv.usuario_a === yo.id ? conv.usuario_b : conv.usuario_a;
     const otro = await obtenerUsuario(otroId);
     const otroUsername = otro?.github_login ?? otroId;
 
-    // Si el otro ya envió solicitud, confirmamos la amistad.
     const yaPropuso = await existeSolicitudPendiente(otroId, yo.id);
     if (yaPropuso) {
       await confirmarAmistad(yo.id, otroId);
@@ -354,19 +349,18 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
         de_username: yo.github_login,
       });
       return [
-        `  ✓ ahora tú y @${otroUsername} son amigos.`,
-        "  pueden seguir hablando o escribir /tp leave para cerrar la conversación.",
+        t('add.confirmed', otroUsername),
+        t('add.confirmed_stay'),
       ].join("\n");
     }
 
-    // Si no, registramos nuestra solicitud y notificamos al otro en tiempo real.
-    await proponerAmistad(yo.id, otroId, conv.id);
+    await proponerAmistad(yo.id, otroId);
     await enviarMensajeSistema(conv.id, {
       tipo: "amistad_propuesta",
       de_usuario_id: yo.id,
       de_username: yo.github_login,
     });
-    return `  propuesta de amistad enviada a @${otroUsername}. esperando que él también escriba /tp add.`;
+    return t('add.proposed_waiting', otroUsername);
   },
 
   /** /tp leave — cierra la conversación activa. */
@@ -377,9 +371,8 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
     const conv = await obtenerConversacionActiva(yo.id);
     if (!conv) {
-      return "No tienes una conversación activa.";
+      return t('leave.no_conv');
     }
-    // Notificar al otro usuario antes de cerrar el canal.
     await enviarMensajeSistema(conv.id, {
       tipo: "conversacion_cerrada",
       de_usuario_id: yo.id,
@@ -390,7 +383,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     await actualizarConversacionActiva(yo.id, null);
     yo.conversacion_activa_id = null;
     setUsuarioActual(yo);
-    return "Has salido de la conversación.";
+    return t('leave.success');
   },
 
   /** /tp readme [toggle] — muestra el README del match en conversación, o togglea el tuyo. */
@@ -403,28 +396,26 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     if (args[0] === "toggle") {
       const proyecto = getProyectoActual();
       if (!proyecto) {
-        return "  no tienes un proyecto detectado aún. usa /tp search o reabre tu workspace primero.";
+        return t('readme.no_project');
       }
       const nuevoValor = proyecto.comparte_readme === false ? true : false;
       const actualizado = await crearOActualizarProyecto({
         ...proyecto,
         comparte_readme: nuevoValor,
-        actualizado_por: yo.github_login,
+        actualizado_por: yo.id,
       });
       setProyectoActual(actualizado);
-      return nuevoValor
-        ? "  ✓ tu README ahora es público para tus matches."
-        : "  ✓ tu README ahora es privado.";
+      return nuevoValor ? t('readme.public') : t('readme.private');
     }
 
     const conv = await obtenerConversacionActiva(yo.id);
     if (!conv) {
-      return "No tienes una conversación activa.";
+      return t('readme.no_match_conv');
     }
     const otroId = conv.usuario_a === yo.id ? conv.usuario_b : conv.usuario_a;
     const proyecto = await obtenerProyectoActivo(otroId);
     if (!proyecto?.readme) {
-      return "El match no tiene README disponible.";
+      return t('readme.no_readme_conv');
     }
     return proyecto.readme;
   },
@@ -437,23 +428,23 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
     const match = getMatchActual();
     if (!match) {
-      return "  no hay match activo. usa /tp search primero.";
+      return t('connect.no_match');
     }
     const proyecto = await obtenerProyectoActivo(match.usuario.id);
     if (proyecto?.comparte_readme === false) {
-      return "  este usuario no comparte su README.";
+      return t('readme.not_shared');
     }
     if (!proyecto?.readme) {
-      return "  el match no tiene README disponible.";
+      return t('readme.no_match');
     }
     return [
-      `── README de @${match.usuario.github_login} ────────────────────`,
+      t('readme.header', match.usuario.github_login),
       "",
       proyecto.readme,
       "",
-      "──────────────────────────────────────",
-      "/tp connect   → enviar invitación",
-      "/tp search    → buscar otro",
+      t('search.separator'),
+      t('search.connect_hint'),
+      t('search.next_hint'),
     ].join("\n");
   },
 
@@ -465,7 +456,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
     const conv = await obtenerConversacionActiva(yo.id);
     if (!conv) {
-      return "No tienes una conversación activa.";
+      return t('leave.no_conv');
     }
     const otroId = conv.usuario_a === yo.id ? conv.usuario_b : conv.usuario_a;
     const [mio, suyo] = await Promise.all([
@@ -473,7 +464,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       obtenerProyectoActivo(otroId),
     ]);
     if (!mio || !suyo) {
-      return "Falta información de proyecto para comparar el stack.";
+      return t('stack.no_project');
     }
     return tablaCompatibilidad(mio, suyo);
   },
@@ -489,8 +480,8 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
 
     const proyecto = getProyectoActual();
-    const postal = renderPostal(yo.github_login, yo.location, yo.bio, proyecto);
-    return `${postal}\n\n  /tp profile edit → escribir tu bio`;
+    const postal = renderPostal(yo.github_login, yo.locacion, yo.bio, proyecto);
+    return `${postal}\n\n${t('profile.edit_hint')}`;
   },
 
   /** /tp clear — limpia la pantalla del panel. */
@@ -506,16 +497,16 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
     const match = getMatchActual();
     if (!match) {
-      return "  no hay match activo. usa /tp search primero.";
+      return t('connect.no_match');
     }
     const yo = await refrescarUsuario(base);
     if (yo.conversacion_activa_id) {
-      return "  ya tienes una conversación activa. usa /tp leave para salir primero.";
+      return t('connect.active_conv');
     }
 
     const miProyecto = await obtenerProyectoActivo(yo.id);
     const invit = await conSpinner(
-      'enviando invitación...',
+      t('connect.sending'),
       crearInvitacion(yo.id, match.usuario.id, miProyecto?.readme ?? '', getPuntajeActual()),
     );
 
@@ -528,8 +519,8 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     );
 
     return [
-      `  invitación enviada a @${match.usuario.github_login}.`,
-      "  esperando respuesta...",
+      t('connect.sent', match.usuario.github_login),
+      t('connect.waiting'),
     ].join("\n");
   },
 
@@ -541,7 +532,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
     const pend = getInvitacionPendiente();
     if (!pend) {
-      return "  no tienes invitaciones pendientes.";
+      return t('accept.no_pending');
     }
     const conv = await crearConversacion(
       pend.invitacion.de_usuario,
@@ -550,10 +541,8 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     );
     await actualizarConversacionActiva(pend.invitacion.de_usuario, conv.id);
     await actualizarConversacionActiva(yo.id, conv.id);
-    // El conversacion_id viaja en el payload del evento Realtime para que
-    // el invitador lo use directamente sin race condition.
     await conSpinner(
-      'aceptando invitación...',
+      t('accept.loading'),
       responderInvitacion(pend.invitacion.id, "aceptada", conv.id),
     );
     yo.conversacion_activa_id = conv.id;
@@ -561,9 +550,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     iniciarChat(conv.id, yo.id, pend.username);
     setInvitacionPendiente(null);
     return [
-      `  ✓ aceptaste la invitación de @${pend.username}.`,
-      "  conversación iniciada.",
-      "  escribe /tp stack para ver la compatibilidad.",
+      t('accept.success', pend.username),
+      t('connect.started'),
+      t('connect.stack_hint'),
     ].join("\n");
   },
 
@@ -575,11 +564,11 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
     const pend = getInvitacionPendiente();
     if (!pend) {
-      return "  no tienes invitaciones pendientes.";
+      return t('accept.no_pending');
     }
     await responderInvitacion(pend.invitacion.id, "rechazada");
     setInvitacionPendiente(null);
-    return "  invitación rechazada.";
+    return t('reject.success');
   },
 
   /** /tp bug <mensaje> — reporta un problema. */
@@ -590,10 +579,10 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
     const mensaje = args.join(" ").trim();
     if (!mensaje) {
-      return "  uso: /tp bug <descripción del problema>";
+      return t('feedback.bug_usage');
     }
-    await crearFeedback(yo.id, "bug", mensaje, yo.github_login);
-    return "  ✓ gracias por reportarlo, lo vamos a revisar.";
+    await crearFeedback(yo.id, "bug", mensaje, yo.id);
+    return t('feedback.bug_success');
   },
 
   /** /tp sugerencia <mensaje> — propone una mejora. */
@@ -604,25 +593,24 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
     const mensaje = args.join(" ").trim();
     if (!mensaje) {
-      return "  uso: /tp sugerencia <tu idea>";
+      return t('feedback.suggestion_usage');
     }
-    await crearFeedback(yo.id, "sugerencia", mensaje, yo.github_login);
-    return "  ✓ gracias por la idea, la vamos a tener en cuenta.";
+    await crearFeedback(yo.id, "sugerencia", mensaje, yo.id);
+    return t('feedback.suggestion_success');
   },
 
   /** /tp logout — cierra la sesión, elimina el token y limpia el flag de consentimiento. */
   logout: async () => {
     const yo = getUsuarioActual();
     if (!yo) {
-      return "  no hay sesión activa.";
+      return t('logout.no_session');
     }
     if (_ctx) {
       await eliminarToken(_ctx);
-      // Limpiar el flag de consentimiento para que el próximo usuario vea los términos.
       await _ctx.globalState.update("termpals.consent.shown", false);
     }
     setUsuarioActual(null);
-    return "  sesión cerrada. escribe /tp login para volver a conectar.";
+    return t('logout.success');
   },
 
   /** /tp delete — inicia el flujo de eliminación de cuenta con confirmación. */
@@ -632,15 +620,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       return yo;
     }
     setEsperandoConfirmacionDelete(true);
-    return [
-      "  ¿seguro que querés eliminar tu cuenta?",
-      "",
-      "  esto eliminará todos tus datos de TermPals:",
-      "  conversaciones, matches, amigos y perfil.",
-      "",
-      "  escribe  CONFIRMAR  para continuar",
-      "  o cualquier otra cosa para cancelar",
-    ].join("\n");
+    return t('delete.confirm_full');
   },
 };
 
@@ -661,16 +641,13 @@ export async function ejecutarComando(
     setEsperandoConfirmacionDelete(false);
     if (linea.trim() === "CONFIRMAR") {
       const yo = getUsuarioActual();
-      if (!yo) { return "Error de sesión."; }
+      if (!yo) { return t('error.session'); }
       await eliminarCuenta(yo.id);
       if (_ctx) { await eliminarToken(_ctx); }
       setUsuarioActual(null);
-      return [
-        "  ✓ cuenta eliminada.",
-        "  gracias por haber usado TermPals.",
-      ].join("\n");
+      return t('delete.success');
     }
-    return "  cancelado. tu cuenta sigue activa.";
+    return t('delete.cancelled');
   }
 
   if (getEsperandoRespuestaPro()) {
@@ -678,31 +655,31 @@ export async function ejecutarComando(
 
     if (opcion === "/tp skip" || opcion === "3") {
       setEsperandoRespuestaPro(false);
-      return "  ok, seguimos con lo gratis. podés responder esto después con /tp search.";
+      return t('pro.skipped');
     }
 
     if (opcion !== "1" && opcion !== "2") {
-      return "  escribe 1, 2, o /tp skip para responder después.";
+      return t('error.pro_invalid');
     }
 
     const yo = getUsuarioActual();
     if (!yo) {
-      return "Error de sesión.";
+      return t('error.session');
     }
     const interesado = opcion === "1";
     await guardarInteresPro(yo.id, interesado);
     setEsperandoRespuestaPro(false);
     if (interesado) {
       return [
-        "  ✓ genial, te avisaremos apenas esté disponible.",
-        "  mientras tanto, podés seguir usando TermPals gratis,",
-        "  con 4 búsquedas diarias.",
+        t('pro.interested'),
+        t('pro.free_reminder'),
+        t('pro.daily_limit'),
       ].join("\n");
     } else {
       return [
-        "  ✓ gracias por tu honestidad, lo tendremos en cuenta.",
-        "  podés seguir usando TermPals gratis,",
-        "  con 4 búsquedas diarias.",
+        t('pro.not_interested'),
+        t('pro.free_reminder'),
+        t('pro.daily_limit'),
       ].join("\n");
     }
   }
@@ -715,65 +692,69 @@ export async function ejecutarComando(
     };
     const valor = opciones[linea.trim()];
     if (!valor) {
-      return "  por favor escribe 1, 2 o 3.";
+      return t('error.invalid_option');
     }
     setOnboardingDatos({ ...getOnboardingDatos(), busca: valor });
     setOnboardingPaso('bio');
-    return `  ✓ guardado.
-
-Paso 2 de 3 — Contanos algo de vos (máx 280 caracteres)
-
-  Esto es lo primero que va a ver la gente cuando hagas match.
-  Escribe /tp skip para completarlo después con /tp profile edit.
-
-  Escribe tu bio:`;
+    return [
+      t('onboarding.step1_saved'),
+      "",
+      t('onboarding.step2_title'),
+      "",
+      "  " + t('onboarding.step2_hint'),
+      "  " + t('onboarding.step2_skip'),
+      "",
+      "  " + t('onboarding.step2_prompt'),
+    ].join("\n");
   }
 
   if (paso === 'bio') {
     const yo = getUsuarioActual();
-    if (!yo) { return "Error de sesión."; }
+    if (!yo) { return t('error.session'); }
 
     if (linea.trim() === '/tp skip') {
       setOnboardingPaso('readme');
-      return `  saltado.
-
-Paso 3 de 3 — Compartir tu README
-
-  TermPals puede leer el README.md de tu proyecto actual y
-  mostrarlo a las personas con las que hagas match.
-
-  1. Sí, compartir mi README con mis matches
-  2. No, solo compartir mi stack técnico (sin README)
-
-  Escribe el número de tu elección y pulsa Enter:`;
+      return [
+        t('onboarding.step2_skipped'),
+        "",
+        t('onboarding.step3_title'),
+        "",
+        "  " + t('onboarding.step3_desc'),
+        "",
+        t('onboarding.step3_opt1'),
+        t('onboarding.step3_opt2'),
+        "",
+        t('onboarding.step3_prompt'),
+      ].join("\n");
     }
 
     if (linea.length > 280) {
-      return "  la bio no puede superar 280 caracteres. Intenta de nuevo:";
+      return t('profile.bio_too_long');
     }
 
     setOnboardingDatos({ ...getOnboardingDatos(), bio: linea });
     setOnboardingPaso('readme');
-    return `  ✓ bio guardada.
-
-Paso 3 de 3 — Compartir tu README
-
-  TermPals puede leer el README.md de tu proyecto actual y
-  mostrarlo a las personas con las que hagas match.
-
-  1. Sí, compartir mi README con mis matches
-  2. No, solo compartir mi stack técnico (sin README)
-
-  Escribe el número de tu elección y pulsa Enter:`;
+    return [
+      "  " + t('profile.bio_saved'),
+      "",
+      t('onboarding.step3_title'),
+      "",
+      "  " + t('onboarding.step3_desc'),
+      "",
+      t('onboarding.step3_opt1'),
+      t('onboarding.step3_opt2'),
+      "",
+      t('onboarding.step3_prompt'),
+    ].join("\n");
   }
 
   if (paso === 'readme') {
     const yo = getUsuarioActual();
-    if (!yo) { return "Error de sesión."; }
+    if (!yo) { return t('error.session'); }
 
     const opcion = linea.trim();
     if (opcion !== '1' && opcion !== '2') {
-      return "  por favor escribe 1 o 2.";
+      return t('error.invalid_option_12');
     }
 
     const compartirReadme = opcion === '1';
@@ -790,8 +771,8 @@ Paso 3 de 3 — Compartir tu README
         ...proyecto,
         usuario_id: yo.id,
         comparte_readme: compartirReadme,
-        creado_por: yo.github_login,
-        actualizado_por: yo.github_login,
+        creado_por: yo.id,
+        actualizado_por: yo.id,
       });
     }
 
@@ -801,9 +782,11 @@ Paso 3 de 3 — Compartir tu README
     setOnboardingPaso(null);
     setOnboardingDatos({});
 
-    return `  ✓ perfil configurado. Bienvenido a TermPals.
-
-  Escribe /tp search para encontrar tu primer match.`;
+    return [
+      t('onboarding.saved'),
+      "",
+      "  " + t('onboarding.search_hint'),
+    ].join("\n");
   }
 
   // Texto de bio enviado desde el panel en modo edición.
@@ -811,10 +794,10 @@ Paso 3 de 3 — Compartir tu README
     const bio = linea.slice(PREFIJO_BIO.length).trim();
     const yo = getUsuarioActual();
     if (!yo) {
-      return "Inicia sesión con GitHub para editar tu bio.";
+      return t('error.session');
     }
     if (bio.length > 280) {
-      return `la bio excede 280 caracteres (tienes ${bio.length}).`;
+      return t('error.bio_length', bio.length);
     }
     try {
       await actualizarBio(yo.id, bio);
@@ -825,11 +808,11 @@ Paso 3 de 3 — Compartir tu README
     setUsuarioActual(yo);
     const postal = renderPostal(
       yo.github_login,
-      yo.location,
+      yo.locacion,
       bio,
       getProyectoActual(),
     );
-    return `✓ bio guardada.\n\n${postal}`;
+    return `${t('profile.bio_saved')}\n\n${postal}`;
   }
 
   const partes = linea.trim().split(/\s+/);
@@ -839,15 +822,15 @@ Paso 3 de 3 — Compartir tu README
       try {
         await enviarMensaje(yo.conversacion_activa_id, linea, yo.id);
       } catch (err) {
-        return `Error al enviar mensaje: ${(err as Error).message}`;
+        return t('error.send_message', (err as Error).message);
       }
       return null;
     }
-    return "comando no reconocido. escribe /tp help para ver los comandos.";
+    return t('error.unknown_command');
   }
   const nombre = partes[1] as ComandoTp | undefined;
   if (!nombre || !(nombre in handlers)) {
-    return "Comando desconocido. Escribe /tp help.";
+    return t('error.unknown_command');
   }
   try {
     return await handlers[nombre](partes.slice(2));
@@ -863,7 +846,7 @@ Paso 3 de 3 — Compartir tu README
 function requiereUsuario(): Usuario | string {
   const yo = getUsuarioActual();
   if (!yo) {
-    return "Inicia sesión con GitHub para usar este comando.";
+    return t('error.no_session');
   }
   return yo;
 }
@@ -880,31 +863,31 @@ async function refrescarUsuario(yo: Usuario): Promise<Usuario> {
 
 function textoAyuda(): string {
   return [
-    "Comandos de TermPals:",
-    "  /tp search              Busca desarrolladores compatibles",
-    "  /tp connect             Envía invitación al match actual",
-    "  /tp accept              Acepta la invitación pendiente",
-    "  /tp reject              Rechaza la invitación pendiente",
-    "  /tp friends             Lista tus amigos",
-    "  /tp invite <usuario>    Invita a colaborar",
-    "  /tp add                 Propone amistad al usuario de la conversación activa",
-    "  /tp leave               Cierra la conversación actual",
-    "  /tp status              Muestra tu estado, workspace y sesión",
-    "  /tp stack               Compara tu stack con el de tu match",
-    "  /tp read                Lee el README completo del match (antes de conectar)",
-    "  /tp readme              Muestra el README del match en conversación activa",
-    "  /tp readme toggle       Cambia el estatus de tu README (público/privado)",
-    "  /tp profile             Muestra tu postal de presentación",
-    "  /tp profile edit        Edita tu bio",
-    "  /tp clear               Limpia la pantalla",
-    "  /tp bug <mensaje>       Reporta un problema",
-    "  /tp sugerencia <msg>    Propone una mejora",
-    "  /tp logout              Cierra tu sesión",
-    "  /tp delete              Elimina tu cuenta",
-    "  /tp help                Muestra esta ayuda",
+    t('help.title'),
+    t('help.search'),
+    t('help.connect'),
+    t('help.accept'),
+    t('help.reject'),
+    t('help.friends'),
+    t('help.invite'),
+    t('help.add'),
+    t('help.leave'),
+    t('help.status'),
+    t('help.stack'),
+    t('help.read'),
+    t('help.readme'),
+    t('help.readme_toggle'),
+    t('help.profile'),
+    t('help.profile_edit'),
+    t('help.clear'),
+    t('help.bug'),
+    t('help.suggestion'),
+    t('help.logout'),
+    t('help.delete'),
+    t('help.help'),
     "",
-    "  Durante el onboarding:",
-    "  /tp skip                Salta el paso actual del onboarding",
+    t('help.onboarding'),
+    t('help.skip'),
   ].join("\n");
 }
 
@@ -936,8 +919,7 @@ const BIO_WRAP = 33;
 
 /**
  * Envuelve un texto en líneas de como máximo `maxChars` caracteres, sin partir
- * nunca una palabra. Devuelve TODAS las líneas necesarias (sin límite ni
- * truncado).
+ * nunca una palabra.
  */
 function envolverTexto(texto: string, maxChars: number): string[] {
   const palabras = texto.split(" ");
@@ -960,8 +942,7 @@ function envolverTexto(texto: string, maxChars: number): string[] {
 }
 
 /**
- * Renderiza la postal ASCII de un usuario: @usuario, ubicación, bio completa
- * (envuelta por palabras, sin recorte) y el stack. Ancho fijo.
+ * Renderiza la postal ASCII de un usuario.
  */
 function renderPostal(
   username: string,
@@ -1031,21 +1012,21 @@ function formatoMatch(
   puntaje: number,
   nivelMatch: 'exacto' | 'ambas' | 'cualquiera' = 'exacto',
 ): string {
-  const lugar = match.location ? ` · ${match.location}` : "";
+  const lugar = match.locacion ? ` · ${match.locacion}` : "";
   const readmeLinea = proyecto?.comparte_readme === false
-    ? "No compartido por este usuario"
-    : proyecto?.readme ? "Disponible" : "Sin README disponible.";
-  const tests = proyecto?.tiene_tests ? "sí" : "no";
+    ? t('search.not_shared')
+    : proyecto?.readme ? t('search.available') : t('search.no_readme');
+  const tests = proyecto?.tiene_tests ? t('bool.yes') : t('bool.no');
 
   const avisoNivel =
     nivelMatch === 'ambas'
-      ? "  (este match no es tu categoría exacta, pero está abierto a ambas)"
+      ? t('search.match_diff_category')
       : nivelMatch === 'cualquiera'
-        ? "  (no hay matches en tu categoría ahora mismo, este es de otra categoría)"
+        ? t('search.match_any_category')
         : null;
 
   const lineas = [
-    "── match encontrado ──────────────────",
+    t('search.found'),
     "",
     `@${match.github_login}${lugar}`,
   ];
@@ -1064,10 +1045,10 @@ function formatoMatch(
     "",
     `compatibilidad: ${barraCompat(puntaje)} ${puntaje}%`,
     "",
-    "/tp connect   → enviar invitación",
-    "/tp read      → leer su README completo",
-    "/tp search    → buscar otro",
-    "──────────────────────────────────────",
+    t('search.connect_hint'),
+    t('search.read_hint'),
+    t('search.next_hint'),
+    t('search.separator'),
   );
 
   return lineas.join("\n");

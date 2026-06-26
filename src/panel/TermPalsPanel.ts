@@ -4,6 +4,7 @@ import { getUsuarioActual, getOnboardingPaso, setConsentimientoPendiente } from 
 import { setEmisor } from "../output";
 import { intentarLoginSilencioso } from "../auth/github";
 import { escucharInvitacionesEntrantes } from "../websocket/chat";
+import { t } from "../i18n";
 
 /**
  * Proveedor del webview de TermPals que vive en el panel inferior de VS Code
@@ -62,7 +63,7 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
   }
 
   private async loginSilenciosoOManual(): Promise<void> {
-    this.iniciarSpinner('verificando sesión guardada...');
+    this.iniciarSpinner(t('session.verifying'));
 
     const usuario = await intentarLoginSilencioso(this.context);
 
@@ -72,24 +73,24 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
         this.view!.webview.html = this.getConsentHtml();
         return;
       }
-      this.actualizarSpinner('cargando tu perfil...');
+      this.actualizarSpinner(t('session.loading'));
       await new Promise(r => setTimeout(r, 300));
       this.detenerSpinner();
-      this.imprimir(`  sesión restaurada como @${usuario.github_login}`);
+      this.imprimir(t('session.restored', usuario.github_login));
       escucharInvitacionesEntrantes(usuario.id);
       if (getOnboardingPaso() === 'busca') {
         this.imprimir([
-          `¡Bienvenido a TermPals, @${usuario.github_login}!`,
+          t('onboarding.welcome', usuario.github_login),
           '',
-          'Vamos a configurar tu perfil rápido.',
+          t('onboarding.setup'),
           '',
-          'Paso 1 de 3 — ¿Qué buscás en TermPals?',
+          t('onboarding.step1_title'),
           '',
-          '  1. Colaborar — encontrar devs para proyectos',
-          '  2. Networking — ampliar mi red profesional',
-          '  3. Ambas — colaborar y hacer networking',
+          t('onboarding.step1_opt1'),
+          t('onboarding.step1_opt2'),
+          t('onboarding.step1_opt3'),
           '',
-          'Escribe el número de tu elección y pulsa Enter:',
+          t('onboarding.step1_prompt'),
         ].join('\n'));
       }
     } else {
@@ -217,7 +218,7 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
       cuenta en cualquier momento con <span style="color:#4ade80;">/tp delete</span>.
     </div>
 
-    <div style="color:#9ca3af;margin-bottom:10px;">── qué datos recopilamos ──────────────────────</div>
+    <div style="color:#9ca3af;margin-bottom:10px;">${t('consent.data_title')}</div>
 
     <div style="margin-bottom:6px;">
       <input type="checkbox" id="cb-perfil" checked disabled
@@ -252,14 +253,14 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
       <span style="color:#6b7280;font-size:11px;margin-left:6px;">— REQUERIDO para usar la app</span>
     </div>
 
-    <div style="color:#9ca3af;margin-bottom:10px;">── cómo usamos tus datos ──────────────────────</div>
+    <div style="color:#9ca3af;margin-bottom:10px;">${t('consent.usage_title')}</div>
     <div style="color:#6b7280;margin-bottom:18px;padding-left:12px;border-left:2px solid #1a2a1a;">
       Usamos tus datos únicamente para hacer matching con otros devs y mantener
       tu perfil activo en la plataforma. No los vendemos ni compartimos con terceros.<br/>
       Conservación: mientras mantengas cuenta activa. Se eliminan con /tp delete.
     </div>
 
-    <div style="color:#9ca3af;margin-bottom:10px;">── tus derechos RGPD (Art. 15-22) ────────────</div>
+    <div style="color:#9ca3af;margin-bottom:10px;">${t('consent.rights_title')}</div>
     <div style="color:#6b7280;margin-bottom:18px;padding-left:12px;border-left:2px solid #1a2a1a;">
       Acceso · Rectificación · Supresión · Portabilidad · Oposición<br/>
       Contacto: leodanielalvarezcordero@gmail.com<br/>
@@ -276,17 +277,17 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
     </div>
 
     <div style="color:#374151;font-size:11px;">
-      si no aceptás, podés cerrar esta ventana sin registrar ningún dato.
+      ${t('consent.footer')}
     </div>
   </div>
   <div class="botones-fijos">
     <button id="btn-aceptar"
       style="background:#14532d;color:#4ade80;border:1px solid #16a34a;padding:8px 18px;font-family:inherit;font-size:13px;cursor:pointer;">
-      [1] acepto y quiero continuar
+      ${t('consent.btn_accept')}
     </button>
     <button id="btn-leer-mas"
       style="background:transparent;color:#6b7280;border:1px solid #374151;padding:8px 18px;font-family:inherit;font-size:13px;cursor:pointer;">
-      [2] leer política completa
+      ${t('consent.btn_policy')}
     </button>
   </div>
   <script nonce="${nonce}">
@@ -314,6 +315,10 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
 
   private getHtml(): string {
     const nonce = generarNonce();
+    const tagline = t('banner.tagline');
+    const boxInner = 39;
+    const pad = Math.floor((boxInner - tagline.length) / 2);
+    const taglineLine = '║' + ' '.repeat(pad) + tagline + ' '.repeat(Math.max(0, boxInner - pad - tagline.length)) + '║';
     return /* html */ `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -416,15 +421,15 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
       imprimir([
         '╔═══════════════════════════════════════╗',
         '║            T E R M P A L S            ║',
-        '║       conecta con otros devs          ║',
+        '${taglineLine}',
         '╚═══════════════════════════════════════╝',
         '',
         'v0.1.0  ·  hecho para devs, por devs',
         '',
-        'para empezar:',
-        '  1. escribe /tp login     → conecta tu GitHub',
-        '  2. escribe /tp search    → busca un match',
-        '  3. escribe /tp help      → ver todos los comandos',
+        '${t('banner.start')}',
+        '${t('banner.hint1')}',
+        '${t('banner.hint2')}',
+        '${t('banner.hint3')}',
         '',
         '────────────────────────────────────────'
       ].join('\\n'), 'sistema');

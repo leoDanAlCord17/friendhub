@@ -8,6 +8,7 @@ import { hayCredenciales } from "./supabase/client";
 import { iniciarLoginGithub, manejarCallback } from "./auth/github";
 import { getOnboardingPaso } from "./state";
 import { configurarContextComandos, setProveedorPanel } from "./commands";
+import { inicializarI18n, t } from "./i18n";
 
 /**
  * Punto de entrada de la extensión TermPals.
@@ -16,6 +17,7 @@ import { configurarContextComandos, setProveedorPanel } from "./commands";
  * `mh.login` que ejecuta el flujo de GitHub OAuth.
  */
 export function activate(context: vscode.ExtensionContext): void {
+  inicializarI18n(context.extensionUri.fsPath);
   configurarContextComandos(context);
   const proveedor = new TermPalsPanel(context.extensionUri, context);
   setProveedorPanel(proveedor);
@@ -45,26 +47,26 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("tp.login", async () => {
       try {
         const usuario = await iniciarLoginGithub(context);
-        proveedor.imprimir(`Sesión iniciada como @${usuario.github_login}`);
+        proveedor.imprimir(t('session.started', usuario.github_login));
         escucharInvitacionesEntrantes(usuario.id);
         if (getOnboardingPaso() === 'busca') {
           proveedor.imprimir([
-            `¡Bienvenido a TermPals, @${usuario.github_login}!`,
+            t('onboarding.welcome', usuario.github_login),
             '',
-            'Vamos a configurar tu perfil rápido.',
+            t('onboarding.setup'),
             '',
-            'Paso 1 de 3 — ¿Qué buscás en TermPals?',
+            t('onboarding.step1_title'),
             '',
-            '  1. Colaborar — encontrar devs para proyectos',
-            '  2. Networking — ampliar mi red profesional',
-            '  3. Ambas — colaborar y hacer networking',
+            t('onboarding.step1_opt1'),
+            t('onboarding.step1_opt2'),
+            t('onboarding.step1_opt3'),
             '',
-            'Escribe el número de tu elección y pulsa Enter:',
+            t('onboarding.step1_prompt'),
           ].join('\n'));
         }
       } catch (err) {
         const msg = (err as Error).message;
-        proveedor.imprimir(`Error de login: ${msg}`);
+        proveedor.imprimir(t('error.login', msg));
         void vscode.window.showErrorMessage(`TermPals: ${msg}`);
       }
     }),
