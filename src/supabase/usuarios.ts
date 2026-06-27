@@ -185,22 +185,6 @@ export async function verificarYConsumirBusqueda(
   return { permitido: fila.permitido, restantes: fila.restantes };
 }
 
-/** Registra o actualiza el interés del usuario en TermPals Pro. */
-export async function guardarInteresPro(
-  usuario_id: string,
-  interesado: boolean,
-): Promise<void> {
-  const { error } = await getSupabase()
-    .from("interes_pro")
-    .upsert(
-      { usuario_id, interesado, actualizado_por: null },
-      { onConflict: "usuario_id" },
-    );
-  if (error) {
-    throw error;
-  }
-}
-
 /** Actualiza la zona horaria detectada del cliente. */
 export async function actualizarZonaHoraria(
   id: string,
@@ -235,10 +219,7 @@ export async function eliminarCuenta(usuario_id: string): Promise<void> {
   await db.from("amigos").delete().eq("usuario_id", usuario_id);
   await db.from("amigos").delete().eq("amigo_id", usuario_id);
 
-  // 3. interes_pro
-  await db.from("interes_pro").delete().eq("usuario_id", usuario_id);
-
-  // 4. feedback
+  // 3. feedback
   await db.from("feedback").delete().eq("usuario_id", usuario_id);
 
   // 5. invitaciones (ambas direcciones)

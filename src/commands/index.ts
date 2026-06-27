@@ -38,7 +38,6 @@ import {
   obtenerUsuario,
   obtenerUsuarioPorGithubId,
   verificarYConsumirBusqueda,
-  guardarInteresPro,
 } from "../supabase/usuarios";
 import { obtenerAmigos, proponerAmistad, confirmarAmistad, existeSolicitudPendiente } from "../supabase/amigos";
 import {
@@ -69,6 +68,18 @@ export function configurarContextComandos(ctx: vscode.ExtensionContext): void {
 let _panel: IPanel | null = null;
 export function setProveedorPanel(p: IPanel): void {
   _panel = p;
+}
+
+function traducirDominio(d: string | null | undefined): string {
+  if (!d) { return "—"; }
+  const mapa: Record<string, string> = {
+    web:     t('status.domain_web'),
+    mobile:  t('status.domain_mobile'),
+    backend: t('status.domain_backend'),
+    data:    t('status.domain_data'),
+    otro:    t('status.domain_other'),
+  };
+  return mapa[d] ?? d;
 }
 
 function conSpinner<T>(texto: string, operacion: Promise<T>, delayMs = 0): Promise<T> {
@@ -309,7 +320,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       "",
       t('status.workspace'),
       t('status.language', info.lenguajes?.[0] ?? "—"),
-      t('status.domain', info.dominio ?? "—"),
+      t('status.domain', traducirDominio(info.dominio)),
       t('status.tests', info.tiene_tests ? t('bool.yes') : t('bool.no')),
       t('status.stack', stack),
       readmeEstado,
@@ -459,12 +470,19 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       return t('leave.no_conv');
     }
     const otroId = conv.usuario_a === yo.id ? conv.usuario_b : conv.usuario_a;
-    const [mio, suyo] = await Promise.all([
-      obtenerProyectoActivo(yo.id),
-      obtenerProyectoActivo(otroId),
-    ]);
-    if (!mio || !suyo) {
-      return t('stack.no_project');
+    const [mio, suyo] = await conSpinner(
+      t('stack.calculating'),
+      Promise.all([
+        obtenerProyectoActivo(yo.id),
+        obtenerProyectoActivo(otroId),
+      ]),
+      0,
+    );
+    if (!mio) {
+      return t('stack.no_workspace');
+    }
+    if (!suyo) {
+      return t('stack.no_project_theirs');
     }
     return tablaCompatibilidad(mio, suyo);
   },
@@ -667,7 +685,7 @@ export async function ejecutarComando(
       return t('error.session');
     }
     const interesado = opcion === "1";
-    await guardarInteresPro(yo.id, interesado);
+    await crearFeedback(yo.id, 'interes_pro', interesado ? 'si' : 'no', yo.id);
     setEsperandoRespuestaPro(false);
     if (interesado) {
       return [

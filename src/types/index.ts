@@ -118,7 +118,7 @@ export interface Descartado extends CamposControl {
 /** Tabla `feedback`. */
 export interface Feedback extends CamposControl {
   usuario_id: string;
-  tipo: 'bug' | 'sugerencia';
+  tipo: 'bug' | 'sugerencia' | 'interes_pro';
   mensaje: string;
 }
 

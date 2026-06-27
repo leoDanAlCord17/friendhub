@@ -424,7 +424,7 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
         '${taglineLine}',
         '╚═══════════════════════════════════════╝',
         '',
-        'v0.1.0  ·  hecho para devs, por devs',
+        'v0.1.0  ·  ${t('banner.tagline_full')}',
         '',
         '${t('banner.start')}',
         '${t('banner.hint1')}',

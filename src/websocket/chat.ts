@@ -4,6 +4,7 @@ import { Invitacion, Mensaje } from "../types";
 import { obtenerUsuario } from "../supabase/usuarios";
 import { setMatchActual, setInvitacionPendiente, getUsuarioActual, setUsuarioActual, getAmigosCache } from "../state";
 import { emitir } from "../output";
+import { t } from "../i18n";
 
 /**
  * Chat en tiempo real sobre Supabase Realtime **Broadcast**.
@@ -107,7 +108,7 @@ function barra10(puntaje: number): string {
 /** Handler que imprime los mensajes del chat en el panel. */
 function impresorMensajes(miId: string, otroUsername: string): ManejadorMensaje {
   return (m) => {
-    const quien = m.remitente_id === miId ? "tú" : `@${otroUsername}`;
+    const quien = m.remitente_id === miId ? t('chat.you') : `@${otroUsername}`;
     emitir(`${quien}: ${m.contenido}`);
   };
 }
@@ -144,20 +145,23 @@ function manejarSistema(
   if (msg.de_usuario_id === getUsuarioActual()?.id) { return; }
 
   if (msg.tipo === "amistad_propuesta") {
+    emitir(t('chat.system_separator'));
     emitir([
-      `  @${msg.de_username} quiere ser tu amigo.`,
-      "  /tp add → confirmar amistad",
+      t('chat.friend_request', msg.de_username),
+      t('chat.friend_confirm'),
     ].join("\n"));
   } else if (msg.tipo === "amistad_confirmada") {
+    emitir(t('chat.system_separator'));
     emitir([
       `  ✓ tú y @${otroUsername} ahora son amigos.`,
-      "  pueden seguir hablando o escribir /tp leave para cerrar la conversación.",
+      t('chat.friends_now'),
     ].join("\n"));
   } else if (msg.tipo === "conversacion_cerrada") {
+    emitir(t('chat.system_separator'));
     emitir([
-      `  @${msg.de_username} cerró la conversación.`,
-      "  ya no puedes enviar mensajes.",
-      `  /tp invite @${msg.de_username} → invitarlo de nuevo`,
+      t('chat.conv_closed', msg.de_username),
+      t('chat.no_more_messages'),
+      t('chat.reinvite', msg.de_username),
     ].join("\n"));
     const yo = getUsuarioActual();
     if (yo) {
@@ -221,7 +225,7 @@ export function escucharInvitaciones(
           iniciarChat(convId, miId, otroUsername);
           emitir(`  ✓ @${otroUsername} aceptó tu invitación.`);
           emitir("  conversación iniciada.");
-          emitir("  escribe /tp stack para ver la compatibilidad.");
+          emitir(t('chat.stack_hint'));
           cerrarCanalInvitacion(clave);
         } else if (estado === "rechazada") {
           emitir(`  @${otroUsername} no está disponible ahora.`);
@@ -273,26 +277,28 @@ export function escucharInvitacionesEntrantes(
               "  ── nueva conversación ────────────────",
               `  @${username} quiere iniciar una conversación contigo.`,
               "  ",
-              "  /tp accept   → aceptar",
-              "  /tp reject   → rechazar",
-              "  ──────────────────────────────────────",
+              t('invite.incoming_accept'),
+              t('invite.incoming_reject'),
+              t('invite.incoming_sep'),
             ].join("\n"),
           );
         } else {
-          const readme = (invit.readme ?? "Sin README.").slice(0, 300);
+          const readmeTexto = invit.readme && invit.readme.trim().length > 0
+            ? invit.readme.substring(0, 300) + (invit.readme.length > 300 ? '...' : '')
+            : t('invite.no_readme');
           emitir(
             [
-              "  ── nueva invitación ──────────────────",
-              `  @${username} quiere conectar contigo.`,
+              t('invite.incoming_title'),
+              t('invite.incoming_wants', username),
               "  ",
-              "  README de su proyecto:",
-              `  ${readme}`,
+              t('invite.incoming_readme'),
+              `  ${readmeTexto}`,
               "  ",
-              `  compatibilidad: ${barra10(invit.puntaje)} ${invit.puntaje}%`,
+              t('invite.incoming_compat', barra10(invit.puntaje), invit.puntaje),
               "  ",
-              "  /tp accept   → aceptar",
-              "  /tp reject   → rechazar",
-              "  ──────────────────────────────────────",
+              t('invite.incoming_accept'),
+              t('invite.incoming_reject'),
+              t('invite.incoming_sep'),
             ].join("\n"),
           );
         }

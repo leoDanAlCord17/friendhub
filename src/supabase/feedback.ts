@@ -2,7 +2,7 @@ import { getSupabase } from "./client";
 
 export async function crearFeedback(
   usuario_id: string,
-  tipo: 'bug' | 'sugerencia',
+  tipo: 'bug' | 'sugerencia' | 'interes_pro',
   mensaje: string,
   creado_por: string,
 ): Promise<void> {
