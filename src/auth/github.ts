@@ -111,7 +111,8 @@ export async function iniciarLoginGithub(
     `?client_id=${encodeURIComponent(clientId)}` +
     `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
     `&scope=${encodeURIComponent(SCOPES)}` +
-    `&state=${encodeURIComponent(state)}`;
+    `&state=${encodeURIComponent(state)}` +
+    `&prompt=select_account`;
 
   // Suscribirse ANTES de abrir el browser para no perder el callback.
   const promesaToken = esperarCallback();
