@@ -1,10 +1,70 @@
 export default async function handler(req, res) {
   const { code, state } = req.query;
 
+  // ── Idioma ───────────────────────────────────────────────────────────────
+  const lang = req.query.lang === 'en' ? 'en' : 'es';
+
+  const i18n = {
+    es: {
+      cmd:               '$ /tp login --provider github',
+      connecting:        '&gt; conectando con github.com...',
+      exchanging:        '&gt; intercambiando código de autorización...',
+      verifying:         '&gt; verificando token...',
+      ok:                '[OK] autenticación completada',
+      redirecting:       'redirigiendo a vs code',
+      manual:            '&gt; abrir vs code manualmente',
+      error_title:       'Error de verificación',
+      error_footer:      'Cerrá esta pestaña y volvé a VS Code para intentar /tp login de nuevo.',
+      access_denied:     'Cancelaste la autorización en GitHub. Volvé a intentar /tp login cuando quieras.',
+      redirect_mismatch: 'La URL de redirección no coincide con la configurada en GitHub. Contactá al desarrollador.',
+      missing_code:      'Asegurate de iniciar el login desde /tp login en VS Code, no accedas a esta URL directamente.',
+      missing_code_title:'Falta el código de autorización',
+      no_config:         'El servidor no está configurado correctamente. Contactá al desarrollador.',
+      no_config_title:   'Error de configuración',
+      network_error:     'No se pudo conectar con GitHub. Verificá tu conexión e intentá de nuevo.',
+      network_title:     'Error de conexión',
+      parse_error:       'GitHub devolvió una respuesta inesperada. Intentá de nuevo en unos minutos.',
+      parse_title:       'Respuesta inesperada',
+      bad_code:          'El código de autorización expiró o ya fue usado. Volvé a intentar /tp login.',
+      bad_code_title:    'Código inválido',
+      bad_creds:         'Error de configuración del servidor (credenciales incorrectas). Contactá al desarrollador.',
+      bad_creds_title:   'Error de credenciales',
+      generic_error:     'GitHub rechazó la solicitud',
+    },
+    en: {
+      cmd:               '$ /tp login --provider github',
+      connecting:        '&gt; connecting to github.com...',
+      exchanging:        '&gt; exchanging authorization code...',
+      verifying:         '&gt; verifying token...',
+      ok:                '[OK] authentication complete',
+      redirecting:       'redirecting to vs code',
+      manual:            '&gt; open vs code manually',
+      error_title:       'Verification error',
+      error_footer:      'Close this tab and return to VS Code to try /tp login again.',
+      access_denied:     'You cancelled the GitHub authorization. Try /tp login again whenever you want.',
+      redirect_mismatch: 'The redirect URL does not match the one configured in GitHub. Contact the developer.',
+      missing_code:      'Make sure to start login from /tp login in VS Code, do not access this URL directly.',
+      missing_code_title:'Missing authorization code',
+      no_config:         'The server is not configured correctly. Contact the developer.',
+      no_config_title:   'Configuration error',
+      network_error:     'Could not connect to GitHub. Check your connection and try again.',
+      network_title:     'Connection error',
+      parse_error:       'GitHub returned an unexpected response. Try again in a few minutes.',
+      parse_title:       'Unexpected response',
+      bad_code:          'The authorization code expired or was already used. Try /tp login again.',
+      bad_code_title:    'Invalid code',
+      bad_creds:         'Server configuration error (incorrect credentials). Contact the developer.',
+      bad_creds_title:   'Credentials error',
+      generic_error:     'GitHub rejected the request',
+    },
+  };
+
+  const tx = i18n[lang];
+
   // ── Helpers de presentación ──────────────────────────────────────────────
 
   const paginaError = (titulo, mensaje) => `<!DOCTYPE html>
-<html lang="es">
+<html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -26,16 +86,16 @@ export default async function handler(req, res) {
   </style>
 </head>
 <body>
-  <div class="linea prompt">$ /tp login --provider github</div>
-  <div class="linea progreso">&gt; conectando con github.com...</div>
+  <div class="linea prompt">${tx.cmd}</div>
+  <div class="linea progreso">${tx.connecting}</div>
   <div class="linea error">[ERROR] ${titulo}</div>
   <div class="linea mensaje">${mensaje}</div>
-  <div class="linea hint">&gt; cerrá esta pestaña y volvé a VS Code para intentar /tp login de nuevo</div>
+  <div class="linea hint">${tx.error_footer}</div>
 </body>
 </html>`;
 
   const paginaExito = (vscodeUrl) => `<!DOCTYPE html>
-<html lang="es">
+<html lang="${lang}">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -61,13 +121,13 @@ export default async function handler(req, res) {
   </style>
 </head>
 <body>
-  <div class="linea prompt">$ /tp login --provider github</div>
-  <div class="linea progreso">&gt; conectando con github.com...</div>
-  <div class="linea progreso">&gt; intercambiando código de autorización...</div>
-  <div class="linea progreso">&gt; verificando token...</div>
-  <div class="linea ok">[OK] autenticación completada</div>
-  <div class="linea redirigiendo">redirigiendo a vs code<span class="cursor">_</span></div>
-  <div class="linea link">&gt; <a href="${vscodeUrl}">abrir vs code manualmente</a></div>
+  <div class="linea prompt">${tx.cmd}</div>
+  <div class="linea progreso">${tx.connecting}</div>
+  <div class="linea progreso">${tx.exchanging}</div>
+  <div class="linea progreso">${tx.verifying}</div>
+  <div class="linea ok">${tx.ok}</div>
+  <div class="linea redirigiendo">${tx.redirecting}<span class="cursor">_</span></div>
+  <div class="linea link"><a href="${vscodeUrl}">${tx.manual}</a></div>
   <script>
     setTimeout(() => { window.location.href = ${JSON.stringify(vscodeUrl)}; }, 1500);
   </script>
@@ -79,37 +139,29 @@ export default async function handler(req, res) {
   if (req.query.error) {
     const errCode = req.query.error;
     const mensajes = {
-      'access_denied':
-        'Cancelaste la autorización en GitHub. Volvé a intentar /tp login cuando quieras.',
-      'redirect_uri_mismatch':
-        'La URL de redirección no coincide con la configurada en GitHub. Este es un problema de configuración, contactá al desarrollador.',
+      'access_denied':       tx.access_denied,
+      'redirect_uri_mismatch': tx.redirect_mismatch,
     };
     const mensaje = mensajes[errCode]
-      ?? `GitHub reportó un error: ${req.query.error_description ?? errCode}`;
-    return res.status(200).send(paginaError('Error de autorización', mensaje));
+      ?? `${tx.generic_error}: ${req.query.error_description ?? errCode}`;
+    return res.status(200).send(paginaError(tx.error_title, mensaje));
   }
 
   // ── 2. Verificar que llegó el code ────────────────────────────────────────
 
   if (!code) {
-    return res.status(200).send(paginaError(
-      'Falta el código de autorización',
-      'Asegurate de iniciar el login desde /tp login en VS Code, no accedas a esta URL directamente.'
-    ));
+    return res.status(200).send(paginaError(tx.missing_code_title, tx.missing_code));
   }
 
   // ── 3. Verificar variables de entorno ─────────────────────────────────────
 
-  const clientId = process.env.GITHUB_CLIENT_ID;
+  const clientId     = process.env.GITHUB_CLIENT_ID;
   const clientSecret = process.env.GITHUB_CLIENT_SECRET;
-  const redirectUri = process.env.REDIRECT_URI;
+  const redirectUri  = process.env.REDIRECT_URI;
 
   if (!clientId || !clientSecret) {
     console.error('TermPals callback: faltan GITHUB_CLIENT_ID o GITHUB_CLIENT_SECRET en las variables de entorno.');
-    return res.status(200).send(paginaError(
-      'Error de configuración del servidor',
-      'El servidor no está configurado correctamente (faltan credenciales). Contactá al desarrollador.'
-    ));
+    return res.status(200).send(paginaError(tx.no_config_title, tx.no_config));
   }
 
   // ── 4. Intercambio code → access_token con GitHub ─────────────────────────
@@ -128,10 +180,7 @@ export default async function handler(req, res) {
     });
   } catch (networkError) {
     console.error('TermPals callback: error de red al contactar GitHub:', networkError);
-    return res.status(200).send(paginaError(
-      'Error de conexión',
-      'No se pudo conectar con GitHub. Verificá tu conexión e intentá de nuevo.'
-    ));
+    return res.status(200).send(paginaError(tx.network_title, tx.network_error));
   }
 
   let data;
@@ -139,10 +188,7 @@ export default async function handler(req, res) {
     data = await response.json();
   } catch (parseError) {
     console.error('TermPals callback: respuesta no-JSON de GitHub:', parseError);
-    return res.status(200).send(paginaError(
-      'Respuesta inesperada',
-      'GitHub devolvió una respuesta inesperada. Intentá de nuevo en unos minutos.'
-    ));
+    return res.status(200).send(paginaError(tx.parse_title, tx.parse_error));
   }
 
   console.log('TermPals callback: respuesta GitHub:', {
@@ -154,14 +200,12 @@ export default async function handler(req, res) {
 
   if (data.error) {
     const mensajes = {
-      'bad_verification_code':
-        'El código de autorización expiró o ya fue usado. Volvé a intentar /tp login desde VS Code.',
-      'incorrect_client_credentials':
-        'Error de configuración del servidor (credenciales incorrectas). Contactá al desarrollador.',
+      'bad_verification_code':        tx.bad_code,
+      'incorrect_client_credentials': tx.bad_creds,
     };
     const mensaje = mensajes[data.error]
-      ?? `GitHub rechazó la solicitud: ${data.error_description ?? data.error}`;
-    return res.status(200).send(paginaError('Error al obtener el token', mensaje));
+      ?? `${tx.generic_error}: ${data.error_description ?? data.error}`;
+    return res.status(200).send(paginaError(tx.error_title, mensaje));
   }
 
   // ── 6. Éxito: redirigir a VS Code ─────────────────────────────────────────

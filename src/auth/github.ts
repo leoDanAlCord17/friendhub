@@ -25,6 +25,7 @@ import {
   obtenerVersionActiva,
   registrarConsentimiento,
 } from "../supabase/consentimientos";
+import { idioma } from "../i18n";
 
 /**
  * Flujo de GitHub OAuth para TermPals a través de un endpoint serverless en
@@ -112,7 +113,8 @@ export async function iniciarLoginGithub(
     `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
     `&scope=${encodeURIComponent(SCOPES)}` +
     `&state=${encodeURIComponent(state)}` +
-    `&prompt=select_account`;
+    `&prompt=select_account` +
+    `&lang=${idioma()}`;
 
   // Suscribirse ANTES de abrir el browser para no perder el callback.
   const promesaToken = esperarCallback();
