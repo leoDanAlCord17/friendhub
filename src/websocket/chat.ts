@@ -223,7 +223,7 @@ export function escucharInvitaciones(
             setUsuarioActual(yo);
           }
           iniciarChat(convId, miId, otroUsername);
-          emitir(`  ✓ @${otroUsername} aceptó tu invitación.`);
+          emitir(t('connect.accepted', otroUsername));
           emitir(t('connect.started'));
           emitir(t('chat.stack_hint'));
           cerrarCanalInvitacion(clave);
@@ -265,6 +265,11 @@ export function escucharInvitacionesEntrantes(
       },
       async ({ new: fila }) => {
         const invit = fila as Invitacion;
+
+        if (invit.de_usuario === usuario_id) {
+          return;
+        }
+
         const remitente = await obtenerUsuario(invit.de_usuario);
         const username = remitente?.github_login ?? invit.de_usuario;
         setInvitacionPendiente({ invitacion: invit, username });
