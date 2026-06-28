@@ -7,7 +7,7 @@ import {
   Usuario,
   IPanel,
 } from "../types";
-import { t } from "../i18n";
+import { t, idioma } from "../i18n";
 import {
   getUsuarioActual,
   setUsuarioActual,
@@ -73,11 +73,17 @@ export function setProveedorPanel(p: IPanel): void {
 
 function traducirBusca(b: string | null | undefined): string {
   if (!b) { return t('status.no_detected'); }
-  const mapa: Record<string, string> = {
-    colaborar:  t('busca.colaborar'),
-    networking: t('busca.networking'),
-    ambas:      t('busca.ambas'),
+  const mapaEs: Record<string, string> = {
+    colaborar: 'colaborar',
+    networking: 'networking',
+    ambas: 'ambas',
   };
+  const mapaEn: Record<string, string> = {
+    colaborar: 'collaborate',
+    networking: 'networking',
+    ambas: 'both',
+  };
+  const mapa = idioma() === 'en' ? mapaEn : mapaEs;
   return mapa[b] ?? b;
 }
 
@@ -1105,7 +1111,7 @@ function formatoMatch(
   const sinWorkspace = !proyectoPropio || !proyectoPropio.lenguajes || proyectoPropio.lenguajes.length === 0;
 
   lineas.push(
-    `busca: ${match.busca ?? "—"}`,
+    t('status.looking_for', traducirBusca(match.busca)),
     "",
     `README:    ${readmeLinea}`,
     "",
