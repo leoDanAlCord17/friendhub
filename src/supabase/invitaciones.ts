@@ -52,6 +52,21 @@ export async function responderInvitacion(
   return data as Invitacion;
 }
 
+/** Busca una invitación pendiente entre dos usuarios (para evitar duplicados). */
+export async function obtenerInvitacionPendienteEntre(
+  de: string,
+  para: string,
+): Promise<Invitacion | null> {
+  const { data } = await getSupabase()
+    .from(TABLA)
+    .select('*')
+    .eq('de_usuario', de)
+    .eq('para_usuario', para)
+    .eq('estado', 'pendiente')
+    .maybeSingle();
+  return (data as Invitacion) ?? null;
+}
+
 /** Lista las invitaciones pendientes recibidas por un usuario. */
 export async function obtenerInvitacionesPendientes(
   usuario_id: string,

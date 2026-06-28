@@ -48,6 +48,7 @@ import {
 import {
   crearInvitacion,
   responderInvitacion,
+  obtenerInvitacionPendienteEntre,
 } from "../supabase/invitaciones";
 import { calcularCompatibilidad } from "../compatibility/score";
 import { escucharInvitaciones, iniciarChat, enviarMensaje, enviarMensajeSistema } from "../websocket/chat";
@@ -68,6 +69,16 @@ export function configurarContextComandos(ctx: vscode.ExtensionContext): void {
 let _panel: IPanel | null = null;
 export function setProveedorPanel(p: IPanel): void {
   _panel = p;
+}
+
+function traducirBusca(b: string | null | undefined): string {
+  if (!b) { return t('status.no_detected'); }
+  const mapa: Record<string, string> = {
+    colaborar:  t('busca.colaborar'),
+    networking: t('busca.networking'),
+    ambas:      t('busca.ambas'),
+  };
+  return mapa[b] ?? b;
 }
 
 function traducirDominio(d: string | null | undefined): string {
@@ -263,11 +274,18 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
         ? calcularCompatibilidad(miProyecto, proyectoAmigo, yo.zona_horaria, amigo.zona_horaria).puntaje
         : 0;
 
-    const invit = await crearInvitacion(
-      yo.id,
-      amigo.id,
-      miProyecto?.readme ?? "",
-      puntaje,
+    const existente = await obtenerInvitacionPendienteEntre(yo.id, amigo.id);
+    if (existente) {
+      escucharInvitaciones(existente.id, yo.id, amigo.id, username, puntaje);
+      return [
+        t('invite.sent', username),
+        t('connect.waiting'),
+      ].join('\n');
+    }
+
+    const invit = await conSpinner(
+      t('connect.sending'),
+      crearInvitacion(yo.id, amigo.id, miProyecto?.readme ?? "", puntaje),
     );
 
     escucharInvitaciones(invit.id, yo.id, amigo.id, username, puntaje);
@@ -311,11 +329,20 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       ultimaFecha === hoy ? (yo.searches_hoy ?? 0) : 0;
     const busquedasRestantes = Math.max(0, 4 - searchesActuales);
 
+    let totalAmigos = getAmigosCache().length;
+    if (totalAmigos === 0) {
+      const listaAmigos = await obtenerAmigos(yo.id);
+      totalAmigos = listaAmigos.length;
+      if (listaAmigos.length > 0) {
+        setAmigosCache(listaAmigos.map(a => ({ id: a.amigo_id } as Usuario)));
+      }
+    }
+
     const lineas = [
       t('status.title'),
       "",
       t('status.user', yo.github_login),
-      t('status.looking_for', yo.busca ?? "—"),
+      t('status.looking_for', traducirBusca(yo.busca)),
       t('status.session'),
       "",
       t('status.workspace'),
@@ -326,7 +353,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       readmeEstado,
       "",
       yo.conversacion_activa_id ? t('status.active_conv_yes') : t('status.active_conv_no'),
-      t('status.friends', getAmigosCache().length),
+      t('status.friends', totalAmigos),
       t('status.searches', busquedasRestantes),
       t('status.separator'),
     ];
@@ -523,6 +550,13 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     }
 
     const miProyecto = await obtenerProyectoActivo(yo.id);
+
+    const existente = await obtenerInvitacionPendienteEntre(yo.id, match.usuario.id);
+    if (existente) {
+      escucharInvitaciones(existente.id, yo.id, match.usuario.id, match.usuario.github_login, getPuntajeActual());
+      return [t('connect.sent', match.usuario.github_login), t('connect.waiting')].join('\n');
+    }
+
     const invit = await conSpinner(
       t('connect.sending'),
       crearInvitacion(yo.id, match.usuario.id, miProyecto?.readme ?? '', getPuntajeActual()),
@@ -584,7 +618,10 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     if (!pend) {
       return t('accept.no_pending');
     }
-    await responderInvitacion(pend.invitacion.id, "rechazada");
+    await conSpinner(
+      t('accept.loading'),
+      responderInvitacion(pend.invitacion.id, "rechazada"),
+    );
     setInvitacionPendiente(null);
     return t('reject.success');
   },
@@ -853,7 +890,18 @@ export async function ejecutarComando(
   try {
     return await handlers[nombre](partes.slice(2));
   } catch (err) {
-    return `Error: ${(err as Error).message}`;
+    const msg = (err as Error).message ?? '';
+    const esErrorRed =
+      msg.includes('fetch failed') ||
+      msg.includes('network') ||
+      msg.includes('NetworkError') ||
+      msg.includes('Failed to fetch') ||
+      msg.includes('ECONNREFUSED') ||
+      msg.includes('ETIMEDOUT');
+    if (esErrorRed) {
+      return t('error.network');
+    }
+    return t('error.generic', msg);
   }
 }
 

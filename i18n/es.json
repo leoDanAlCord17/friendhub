@@ -19,7 +19,7 @@
   "onboarding.step2_title": "Paso 2 de 3 — Contanos algo de vos (máx 280 caracteres)",
   "onboarding.step2_hint": "Esto es lo primero que va a ver la gente cuando hagas match.",
   "onboarding.step2_skip": "Escribe /tp skip para completarlo después con /tp profile edit.",
-  "onboarding.step2_prompt": "Escribe tu bio:",
+  "onboarding.step2_prompt": "Escribe tu bio y pulsa Enter:",
   "onboarding.step2_skipped": "  saltado.",
   "onboarding.step3_title": "Paso 3 de 3 — Compartir tu README",
   "onboarding.step3_desc": "TermPals puede leer el README.md de tu proyecto actual y mostrarlo a las personas con las que hagas match.",
@@ -90,6 +90,10 @@
   "status.friends": "  amigos:               {0}",
   "status.searches": "  búsquedas hoy:        {0}/4 restantes",
   "status.separator": "──────────────────────────────────────",
+  "status.no_detected": "—",
+  "busca.colaborar": "colaborar",
+  "busca.networking": "networking",
+  "busca.ambas": "ambas",
 
   "profile.loading": "cargando tu perfil...",
   "profile.no_bio": "sin bio aún",
@@ -144,6 +148,9 @@
   "invite.not_friend": "  @{0} no está en tu lista de amigos.",
   "invite.sent": "  invitación enviada a @{0}.",
   "invite.usage": "  uso: /tp invite @usuario",
+  "invite.not_available": "  @{0} no está disponible ahora.",
+  "invite.friend_title": "── nueva conversación ────────────────",
+  "invite.friend_wants": "  @{0} quiere iniciar una conversación contigo.",
 
   "stack.title": "  tú              match",
   "stack.separator": "  ──────────────────────",
@@ -159,6 +166,8 @@
   "error.bio_length": "la bio excede 280 caracteres (tienes {0}).",
   "error.send_message": "Error al enviar mensaje: {0}",
   "error.pro_invalid": "  escribe 1, 2, o /tp skip para responder después.",
+  "error.network": "  sin conexión. verificá tu internet e intentá de nuevo.",
+  "error.generic": "  algo salió mal: {0}",
 
   "bool.yes": "sí",
   "bool.no": "no",

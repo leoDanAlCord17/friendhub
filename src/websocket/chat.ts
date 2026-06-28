@@ -228,7 +228,7 @@ export function escucharInvitaciones(
           emitir(t('chat.stack_hint'));
           cerrarCanalInvitacion(clave);
         } else if (estado === "rechazada") {
-          emitir(`  @${otroUsername} no está disponible ahora.`);
+          emitir(t('invite.not_available', otroUsername));
           setMatchActual(null);
           cerrarCanalInvitacion(clave);
         }
@@ -274,8 +274,8 @@ export function escucharInvitacionesEntrantes(
         if (esAmigo) {
           emitir(
             [
-              "  ── nueva conversación ────────────────",
-              `  @${username} quiere iniciar una conversación contigo.`,
+              t('invite.friend_title'),
+              t('invite.friend_wants', username),
               "  ",
               t('invite.incoming_accept'),
               t('invite.incoming_reject'),

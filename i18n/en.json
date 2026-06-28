@@ -90,6 +90,10 @@
   "status.friends": "  friends:              {0}",
   "status.searches": "  searches today:       {0}/4 remaining",
   "status.separator": "──────────────────────────────────────",
+  "status.no_detected": "—",
+  "busca.colaborar": "collaborate",
+  "busca.networking": "networking",
+  "busca.ambas": "both",
 
   "profile.loading": "loading your profile...",
   "profile.no_bio": "no bio yet",
@@ -144,6 +148,9 @@
   "invite.not_friend": "  @{0} is not in your friends list.",
   "invite.sent": "  invitation sent to @{0}.",
   "invite.usage": "  usage: /tp invite @username",
+  "invite.not_available": "  @{0} is not available right now.",
+  "invite.friend_title": "── new conversation ──────────────────",
+  "invite.friend_wants": "  @{0} wants to start a conversation with you.",
 
   "stack.title": "  you             match",
   "stack.separator": "  ──────────────────────",
@@ -159,6 +166,8 @@
   "error.bio_length": "bio exceeds 280 characters (you have {0}).",
   "error.send_message": "Error sending message: {0}",
   "error.pro_invalid": "  type 1, 2, or /tp skip to answer later.",
+  "error.network": "  no connection. check your internet and try again.",
+  "error.generic": "  something went wrong: {0}",
 
   "bool.yes": "yes",
   "bool.no": "no",
