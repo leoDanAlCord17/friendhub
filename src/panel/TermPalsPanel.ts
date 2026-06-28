@@ -401,7 +401,7 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
     const fila = document.getElementById('prompt-fila');
 
     const PLACEHOLDER_NORMAL = 'escribe un comando  /tp help';
-    const PLACEHOLDER_BIO = 'escribe tu bio aquí y presiona Enter...';
+    const PLACEHOLDER_BIO = '${t('profile.bio_prompt')}';
     let modoEdicion = false;
 
     // Historial de comandos (solo entradas que empiezan con /tp).
