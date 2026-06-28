@@ -97,8 +97,8 @@
 
   "profile.loading": "cargando tu perfil...",
   "profile.no_bio": "sin bio aún",
-  "profile.edit_hint": "  /tp profile edit → escribir tu bio",
-  "profile.bio_prompt": "escribe tu bio (máx 280 caracteres):",
+  "profile.edit_hint": "  /tp profile edit → escribe tu bio y pulsa Enter:",
+  "profile.bio_prompt": "escribe tu bio y pulsa Enter:",
   "profile.bio_saved": "✓ bio guardada.",
   "profile.bio_too_long": "  la bio no puede superar 280 caracteres. Intenta de nuevo:",
 
