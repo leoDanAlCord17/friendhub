@@ -1,6 +1,11 @@
 import { getSupabase } from "./client";
 import { Conversacion } from "../types";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function esUuidValido(id: string): boolean {
+  return UUID_RE.test(id);
+}
+
 const TABLA = "conversaciones";
 
 /** Crea una conversación abierta entre dos usuarios con su puntaje. */
@@ -47,6 +52,9 @@ export async function cerrarConversacion(
 export async function obtenerConversacionActiva(
   usuario_id: string,
 ): Promise<Conversacion | null> {
+  if (!esUuidValido(usuario_id)) {
+    throw new Error('ID de usuario inválido');
+  }
   const { data, error } = await getSupabase()
     .from(TABLA)
     .select("*")

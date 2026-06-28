@@ -1,6 +1,11 @@
 import { getSupabase } from "./client";
 import { Amigo } from "../types";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function esUuidValido(id: string): boolean {
+  return UUID_RE.test(id);
+}
+
 const TABLA = "amigos";
 
 /**
@@ -37,6 +42,9 @@ export async function confirmarAmistad(
   const supabase = getSupabase();
   const ahora = new Date().toISOString();
 
+  if (!esUuidValido(usuario_a_id) || !esUuidValido(usuario_b_id)) {
+    throw new Error('ID de usuario inválido');
+  }
   const { error: errUpdate } = await supabase
     .from(TABLA)
     .update({ estado: 'confirmado', actualizado_en: ahora })

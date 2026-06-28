@@ -229,8 +229,9 @@ export function manejarCallback(
   context: vscode.ExtensionContext,
   uri: vscode.Uri,
 ): void {
+  const fragment = new URLSearchParams(uri.fragment);
+  const accessToken = fragment.get("access_token");
   const params = new URLSearchParams(uri.query);
-  const accessToken = params.get("access_token");
   const rawState = params.get("state") ?? "";
   const [stateReal, lang] = rawState.split("|");
   const guardado = context.globalState.get<string>(STATE_KEY);

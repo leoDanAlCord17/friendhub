@@ -99,7 +99,8 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
       if (esErrorRed) {
         return t('error.network');
       }
-      return t('error.generic', msg);
+      console.error('[TermPals] error en comando:', msg);
+      return t('error.generic_safe');
     } finally {
       cancelado = true;
       if (timerSpinner) { clearTimeout(timerSpinner); }

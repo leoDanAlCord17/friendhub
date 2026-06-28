@@ -18,7 +18,6 @@
   ],
   "main": "./out/extension.js",
   "activationEvents": [
-    "onStartupFinished",
     "onUri"
   ],
   "contributes": {

@@ -5,3 +5,11 @@ src/**
 .eslintrc.json
 tsconfig.json
 *.map
+api/
+.env.example
+.env*
+migrations/
+scripts/
+*.vsix
+.vercel/
+vercel.json

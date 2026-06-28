@@ -121,6 +121,7 @@
   "feedback.suggestion_success": "  ✓ gracias por la idea, la vamos a tener en cuenta.",
   "feedback.bug_usage": "  uso: /tp bug <descripción del problema>",
   "feedback.suggestion_usage": "  uso: /tp suggest <tu idea>",
+  "feedback.too_long": "  el mensaje no puede superar 500 caracteres.",
 
   "readme.no_match": "  no tienes una conversación activa.",
   "readme.no_match_conv": "No tienes una conversación activa.",
@@ -168,6 +169,7 @@
   "error.pro_invalid": "  escribe 1, 2, o /tp skip para responder después.",
   "error.network": "  sin conexión. verificá tu internet e intentá de nuevo.",
   "error.generic": "  algo salió mal: {0}",
+  "error.generic_safe": "  algo salió mal. intentá de nuevo o usá /tp bug para reportarlo.",
   "error.timeout": "  sin respuesta del servidor. intentá de nuevo.",
   "spinner.working": "procesando...",
 

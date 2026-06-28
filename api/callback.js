@@ -1,8 +1,19 @@
+function sanitizarHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;')
+    .replace(/\//g, '&#x2F;');
+}
+
 export default async function handler(req, res) {
   const { code, state } = req.query;
 
   // ── Idioma (extraído del state=UUID|lang) ────────────────────────────────
-  const [, langFromState] = (state ?? '').split('|');
+  const [stateReal = '', langFromState = ''] = (state ?? '').split('|');
   const lang = langFromState === 'en' ? 'en' : 'es';
 
   const i18n = {
@@ -144,7 +155,7 @@ export default async function handler(req, res) {
       'redirect_uri_mismatch': tx.redirect_mismatch,
     };
     const mensaje = mensajes[errCode]
-      ?? `${tx.generic_error}: ${req.query.error_description ?? errCode}`;
+      ?? `${tx.generic_error}: ${sanitizarHtml(req.query.error_description ?? errCode)}`;
     return res.status(200).send(paginaError(tx.error_title, mensaje));
   }
 
@@ -180,7 +191,8 @@ export default async function handler(req, res) {
       body: JSON.stringify(body),
     });
   } catch (networkError) {
-    console.error('TermPals callback: error de red al contactar GitHub:', networkError);
+    console.error('TermPals callback: error de red al contactar GitHub:',
+      networkError?.code ?? networkError?.message ?? 'unknown');
     return res.status(200).send(paginaError(tx.network_title, tx.network_error));
   }
 
@@ -205,13 +217,14 @@ export default async function handler(req, res) {
       'incorrect_client_credentials': tx.bad_creds,
     };
     const mensaje = mensajes[data.error]
-      ?? `${tx.generic_error}: ${data.error_description ?? data.error}`;
+      ?? `${tx.generic_error}: ${sanitizarHtml(data.error_description ?? data.error)}`;
     return res.status(200).send(paginaError(tx.error_title, mensaje));
   }
 
   // ── 6. Éxito: redirigir a VS Code ─────────────────────────────────────────
 
   const vscodeUrl = `vscode://leodanielalvarez.termpals/callback` +
-    `?access_token=${encodeURIComponent(data.access_token)}&state=${encodeURIComponent(state ?? '')}`;
+    `?state=${encodeURIComponent(stateReal)}` +
+    `#access_token=${encodeURIComponent(data.access_token)}`;
   return res.status(200).send(paginaExito(vscodeUrl));
 }

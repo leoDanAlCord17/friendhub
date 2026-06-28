@@ -642,6 +642,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     if (!mensaje) {
       return t('feedback.bug_usage');
     }
+    if (mensaje.length > 500) {
+      return t('feedback.too_long');
+    }
     await crearFeedback(yo.id, "bug", mensaje, yo.id);
     return t('feedback.bug_success');
   },
@@ -655,6 +658,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     const mensaje = args.join(" ").trim();
     if (!mensaje) {
       return t('feedback.suggestion_usage');
+    }
+    if (mensaje.length > 500) {
+      return t('feedback.too_long');
     }
     await crearFeedback(yo.id, "sugerencia", mensaje, yo.id);
     return t('feedback.suggestion_success');
