@@ -168,6 +168,8 @@
   "error.pro_invalid": "  escribe 1, 2, o /tp skip para responder después.",
   "error.network": "  sin conexión. verificá tu internet e intentá de nuevo.",
   "error.generic": "  algo salió mal: {0}",
+  "error.timeout": "  sin respuesta del servidor. intentá de nuevo.",
+  "spinner.working": "procesando...",
 
   "bool.yes": "sí",
   "bool.no": "no",

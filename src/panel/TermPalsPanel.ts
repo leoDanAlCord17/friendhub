@@ -1,5 +1,6 @@
 import * as vscode from "vscode";
 import { ejecutarComando } from "../commands";
+import { ResultadoComando } from "../types";
 import { getUsuarioActual, getOnboardingPaso, setConsentimientoPendiente } from "../state";
 import { setEmisor } from "../output";
 import { intentarLoginSilencioso } from "../auth/github";
@@ -47,6 +48,64 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
       this.spinnerInterval = null;
     }
     this.view?.webview.postMessage({ tipo: 'spinner_fin' });
+  }
+
+  public get spinnerEstaActivo(): boolean {
+    return this.spinnerInterval !== null;
+  }
+
+  private async ejecutarConTimeout(
+    linea: string,
+  ): Promise<ResultadoComando | null> {
+    const DELAY_SPINNER_MS = 800;
+    const TIMEOUT_MS = 10000;
+
+    let spinnerActivo = false;
+    let timerSpinner: ReturnType<typeof setTimeout> | null = null;
+    let timerTimeout: ReturnType<typeof setTimeout> | null = null;
+    let cancelado = false;
+
+    timerSpinner = setTimeout(() => {
+      if (!cancelado && !this.spinnerEstaActivo) {
+        spinnerActivo = true;
+        this.iniciarSpinner(t('spinner.working'));
+      }
+    }, DELAY_SPINNER_MS);
+
+    const promesaTimeout = new Promise<never>((_, reject) => {
+      timerTimeout = setTimeout(() => {
+        reject(new Error('TIMEOUT'));
+      }, TIMEOUT_MS);
+    });
+
+    try {
+      const resultado = await Promise.race([
+        ejecutarComando(linea),
+        promesaTimeout,
+      ]);
+      return resultado;
+    } catch (err) {
+      const msg = (err as Error).message ?? '';
+      if (msg === 'TIMEOUT') {
+        return t('error.timeout');
+      }
+      const esErrorRed =
+        msg.includes('fetch failed') ||
+        msg.includes('network') ||
+        msg.includes('NetworkError') ||
+        msg.includes('Failed to fetch') ||
+        msg.includes('ECONNREFUSED') ||
+        msg.includes('ETIMEDOUT');
+      if (esErrorRed) {
+        return t('error.network');
+      }
+      return t('error.generic', msg);
+    } finally {
+      cancelado = true;
+      if (timerSpinner) { clearTimeout(timerSpinner); }
+      if (timerTimeout) { clearTimeout(timerTimeout); }
+      if (spinnerActivo) { this.detenerSpinner(); }
+    }
   }
 
   constructor(
@@ -131,7 +190,7 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
       }
 
       if (msg?.tipo === "comando" && typeof msg.texto === "string") {
-        const respuesta = await ejecutarComando(msg.texto);
+        const respuesta = await this.ejecutarConTimeout(msg.texto);
         if (respuesta && typeof respuesta === "object" && "modo" in respuesta) {
           webviewView.webview.postMessage({
             tipo: "modo",
