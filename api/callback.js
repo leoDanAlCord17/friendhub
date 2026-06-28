@@ -1,8 +1,9 @@
 export default async function handler(req, res) {
   const { code, state } = req.query;
 
-  // ── Idioma ───────────────────────────────────────────────────────────────
-  const lang = req.query.lang === 'en' ? 'en' : 'es';
+  // ── Idioma (extraído del state=UUID|lang) ────────────────────────────────
+  const [, langFromState] = (state ?? '').split('|');
+  const lang = langFromState === 'en' ? 'en' : 'es';
 
   const i18n = {
     es: {

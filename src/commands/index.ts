@@ -603,8 +603,8 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     return t('feedback.bug_success');
   },
 
-  /** /tp sugerencia <mensaje> — propone una mejora. */
-  sugerencia: async (args) => {
+  /** /tp suggest <mensaje> — propone una mejora. */
+  suggest: async (args) => {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
       return yo;
@@ -1053,6 +1053,9 @@ function formatoMatch(
     lineas.push(avisoNivel);
   }
 
+  const proyectoPropio = getProyectoActual();
+  const sinWorkspace = !proyectoPropio || !proyectoPropio.lenguajes || proyectoPropio.lenguajes.length === 0;
+
   lineas.push(
     `busca: ${match.busca ?? "—"}`,
     "",
@@ -1062,6 +1065,7 @@ function formatoMatch(
     `tests:     ${tests}`,
     "",
     `compatibilidad: ${barraCompat(puntaje)} ${puntaje}%`,
+    ...(sinWorkspace ? [t('search.compat_no_workspace')] : []),
     "",
     t('search.connect_hint'),
     t('search.read_hint'),

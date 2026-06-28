@@ -163,7 +163,7 @@ export type ComandoTp =
   | "reject"
   | "read"
   | "bug"
-  | "sugerencia"
+  | "suggest"
   | "logout"
   | "delete";
 

@@ -69,7 +69,7 @@ export async function eliminarToken(
 }
 
 /** Resultado que el UriHandler entrega al login en curso. */
-type ResultadoCallback = { token: string } | { error: string };
+type ResultadoCallback = { token: string; lang: string } | { error: string };
 
 /** Canal por el que el UriHandler entrega el access_token (o un error). */
 const emisorCallback = new vscode.EventEmitter<ResultadoCallback>();
@@ -107,19 +107,19 @@ export async function iniciarLoginGithub(
   const state = crypto.randomUUID();
   await context.globalState.update(STATE_KEY, state);
 
+  const stateConLang = `${state}|${idioma()}`;
   const authUrl =
     "https://github.com/login/oauth/authorize" +
     `?client_id=${encodeURIComponent(clientId)}` +
     `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
     `&scope=${encodeURIComponent(SCOPES)}` +
-    `&state=${encodeURIComponent(state)}` +
-    `&prompt=select_account` +
-    `&lang=${idioma()}`;
+    `&state=${encodeURIComponent(stateConLang)}` +
+    `&prompt=select_account`;
 
   // Suscribirse ANTES de abrir el browser para no perder el callback.
   const promesaToken = esperarCallback();
   await vscode.env.openExternal(vscode.Uri.parse(authUrl));
-  const accessToken = await promesaToken;
+  const { token: accessToken } = await promesaToken;
 
   // Persistir el token para restaurar sesión en futuros arranques.
   await guardarToken(context, accessToken);
@@ -200,8 +200,8 @@ export async function iniciarLoginGithub(
 }
 
 /** Espera el callback del UriHandler (con timeout) y resuelve con el token. */
-function esperarCallback(): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
+function esperarCallback(): Promise<{ token: string; lang: string }> {
+  return new Promise<{ token: string; lang: string }>((resolve, reject) => {
     const temporizador = setTimeout(() => {
       sub.dispose();
       reject(new Error("Tiempo de espera de autorización agotado."));
@@ -212,7 +212,7 @@ function esperarCallback(): Promise<string> {
       clearTimeout(temporizador);
       sub.dispose();
       if ("token" in resultado) {
-        resolve(resultado.token);
+        resolve({ token: resultado.token, lang: resultado.lang });
       } else {
         reject(new Error(resultado.error));
       }
@@ -231,19 +231,20 @@ export function manejarCallback(
 ): void {
   const params = new URLSearchParams(uri.query);
   const accessToken = params.get("access_token");
-  const state = params.get("state");
+  const rawState = params.get("state") ?? "";
+  const [stateReal, lang] = rawState.split("|");
   const guardado = context.globalState.get<string>(STATE_KEY);
 
   if (!accessToken) {
     emisorCallback.fire({ error: "No se recibió 'access_token'." });
     return;
   }
-  if (!state || !guardado || state !== guardado) {
+  if (!stateReal || !guardado || stateReal !== guardado) {
     emisorCallback.fire({ error: "State inválido (posible CSRF)." });
     return;
   }
   void context.globalState.update(STATE_KEY, undefined);
-  emisorCallback.fire({ token: accessToken });
+  emisorCallback.fire({ token: accessToken, lang: lang ?? "es" });
 }
 
 /** GET usando el módulo nativo `https`. Resuelve con el body crudo. */

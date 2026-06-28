@@ -153,7 +153,7 @@ function manejarSistema(
   } else if (msg.tipo === "amistad_confirmada") {
     emitir(t('chat.system_separator'));
     emitir([
-      `  ✓ tú y @${otroUsername} ahora son amigos.`,
+      t('chat.friends_confirmed', otroUsername),
       t('chat.friends_now'),
     ].join("\n"));
   } else if (msg.tipo === "conversacion_cerrada") {
@@ -224,7 +224,7 @@ export function escucharInvitaciones(
           }
           iniciarChat(convId, miId, otroUsername);
           emitir(`  ✓ @${otroUsername} aceptó tu invitación.`);
-          emitir("  conversación iniciada.");
+          emitir(t('connect.started'));
           emitir(t('chat.stack_hint'));
           cerrarCanalInvitacion(clave);
         } else if (estado === "rechazada") {
