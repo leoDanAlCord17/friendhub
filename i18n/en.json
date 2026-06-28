@@ -19,7 +19,7 @@
   "onboarding.step2_title": "Step 2 of 3 — Tell us about yourself (max 280 chars)",
   "onboarding.step2_hint": "This is the first thing people will see when you match.",
   "onboarding.step2_skip": "Type /tp skip to fill it in later with /tp profile edit.",
-  "onboarding.step2_prompt": "Write your bio:",
+  "onboarding.step2_prompt": "Write your bio and press Enter:",
   "onboarding.step2_skipped": "  skipped.",
   "onboarding.step3_title": "Step 3 of 3 — Share your README",
   "onboarding.step3_desc": "TermPals can read your current project's README.md and share it with people you match with.",
