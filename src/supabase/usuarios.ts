@@ -1,6 +1,7 @@
 import { getSupabase } from "./client";
 import { Usuario } from "../types";
 import { obtenerDescartadosEnSesionIds } from "./descartados";
+import { logError } from "../logger";
 
 const TABLA = "usuarios";
 
@@ -42,6 +43,7 @@ export async function crearUsuario(
     .select("*")
     .single();
   if (error) {
+    logError('crear-usuario', error);
     throw error;
   }
   return data as Usuario;
@@ -167,6 +169,7 @@ export async function verificarYConsumirBusqueda(
     p_usuario_id: usuario_id,
   });
   if (error) {
+    logError('rpc-consumir-busqueda', error);
     throw error;
   }
   const fila = (data as { permitido: boolean; restantes: number }[])[0];

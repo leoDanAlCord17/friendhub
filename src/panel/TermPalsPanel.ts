@@ -4,6 +4,7 @@ import { ResultadoComando } from "../types";
 import { getUsuarioActual, getOnboardingPaso, setConsentimientoPendiente } from "../state";
 import { setEmisor } from "../output";
 import { intentarLoginSilencioso } from "../auth/github";
+import { logError } from "../logger";
 import { escucharInvitacionesEntrantes } from "../websocket/chat";
 import { t } from "../i18n";
 
@@ -104,7 +105,7 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
       if (esErrorRed) {
         return t('error.network');
       }
-      console.error('[TermPals] error en comando:', msg);
+      logError('ejecutar-comando', err);
       return t('error.generic_safe');
     } finally {
       cancelado = true;

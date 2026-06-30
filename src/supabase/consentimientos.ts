@@ -1,5 +1,6 @@
 import { getSupabase } from "./client";
 import { TerminosVersion, Consentimiento } from "../types";
+import { logError } from "../logger";
 
 /** Granularidad del consentimiento del usuario. */
 export interface GranularConsentimiento {
@@ -47,7 +48,7 @@ export async function registrarConsentimiento(
     })
     .select("*")
     .single();
-  if (e1) { throw e1; }
+  if (e1) { logError('registrar-consentimiento', e1); throw e1; }
 
   const consentimiento = data as Consentimiento;
 

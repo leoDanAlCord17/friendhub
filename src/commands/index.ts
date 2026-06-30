@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { logError } from "../logger";
 import {
   ComandoTp,
   ComandoHandler,
@@ -927,6 +928,7 @@ export async function ejecutarComando(
     if (esErrorRed) {
       return t('error.network');
     }
+    logError('comando', err);
     return t('error.generic', msg);
   }
 }

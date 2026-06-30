@@ -1,6 +1,7 @@
 import * as https from "https";
 import * as crypto from "crypto";
 import * as vscode from "vscode";
+import { logError } from "../logger";
 import { Usuario } from "../types";
 import {
   obtenerUsuarioPorGithubId,
@@ -295,7 +296,8 @@ export async function intentarLoginSilencioso(
 
     setUsuarioActual(usuario);
     return usuario;
-  } catch {
+  } catch (err) {
+    logError('login-silencioso', err);
     await eliminarToken(context);
     return null;
   }

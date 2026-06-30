@@ -1,5 +1,6 @@
 import { getSupabase } from "./client";
 import { Conversacion } from "../types";
+import { logError } from "../logger";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function esUuidValido(id: string): boolean {
@@ -104,6 +105,7 @@ export async function conectarUsuarios(
     p_puntaje: puntaje,
   });
   if (error) {
+    logError('rpc-conectar-usuarios', error);
     throw error;
   }
   const fila = (data as { conversacion_id: string; invitacion_id: string }[])[0];
