@@ -28,26 +28,6 @@ export interface MensajeSistema {
 
 const suscripciones = new Map<string, RealtimeChannel>();
 
-/** Se suscribe a los mensajes en vivo de una conversación. */
-export function suscribirseAlChat(
-  conversacion_id: string,
-  onMensaje: ManejadorMensaje,
-): RealtimeChannel {
-  desuscribirse(conversacion_id);
-
-  const canal = getSupabase()
-    .channel(`chat:${conversacion_id}`, {
-      config: { broadcast: { self: true } },
-    })
-    .on("broadcast", { event: EVENTO }, ({ payload }) => {
-      onMensaje(payload as Mensaje);
-    })
-    .subscribe();
-
-  suscripciones.set(conversacion_id, canal);
-  return canal;
-}
-
 /** Envía un mensaje por el canal de la conversación. */
 export async function enviarMensaje(
   conversacion_id: string,
@@ -129,7 +109,17 @@ export function iniciarChat(
     .on("broadcast", { event: EVENTO_SISTEMA }, ({ payload }) => {
       manejarSistema(conversacion_id, otroUsername, payload as MensajeSistema);
     })
-    .subscribe();
+    .subscribe((status: string) => {
+      if (status === 'CHANNEL_ERROR') {
+        emitir(t('chat.connection_error'));
+        setTimeout(() => {
+          if (getUsuarioActual()?.conversacion_activa_id) {
+            emitir(t('chat.reconnecting'));
+            canal.subscribe();
+          }
+        }, 3000);
+      }
+    });
 
   suscripciones.set(conversacion_id, canal);
 }

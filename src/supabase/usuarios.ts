@@ -156,18 +156,6 @@ export async function actualizarBio(id: string, bio: string): Promise<void> {
   }
 }
 
-/** Lista los usuarios activos disponibles para conectar. */
-export async function listarDisponibles(): Promise<Usuario[]> {
-  const { data, error } = await getSupabase()
-    .from(TABLA)
-    .select("*")
-    .eq("estatus", true);
-  if (error) {
-    throw error;
-  }
-  return (data ?? []) as Usuario[];
-}
-
 /**
  * Llama a la RPC `consumir_busqueda` que ejecuta el conteo de forma atómica
  * (SELECT … FOR UPDATE), eliminando la race condition de read-modify-write.

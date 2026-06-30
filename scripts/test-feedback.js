@@ -56,7 +56,6 @@ async function main() {
       github_login:       'feedback-testuser',
       nombre_usuario:     'feedback-testuser',
       estatus:            true,
-      disponible:         true,
       searches_hoy:       0,
       ultima_busqueda_en: null,
     }, { onConflict: 'github_id' })
@@ -69,7 +68,7 @@ async function main() {
   console.log('\n  Test 1 — insertar feedback tipo=bug:');
   const mensajeBug = 'el comando /tp search se congela al buscar';
   try {
-    await crearFeedback(usuario.id, 'bug', mensajeBug, usuario.github_login);
+    await crearFeedback(usuario.id, 'bug', mensajeBug, usuario.id);
     pass('crearFeedback() resolvió sin error');
   } catch (err) {
     fail(`crearFeedback() lanzó error: ${err.message}`);
@@ -79,7 +78,7 @@ async function main() {
   console.log('\n  Test 2 — insertar feedback tipo=sugerencia:');
   const mensajeSug = 'agregar filtro por zona horaria en el match';
   try {
-    await crearFeedback(usuario.id, 'sugerencia', mensajeSug, usuario.github_login);
+    await crearFeedback(usuario.id, 'sugerencia', mensajeSug, usuario.id);
     pass('crearFeedback() resolvió sin error');
   } catch (err) {
     fail(`crearFeedback() lanzó error: ${err.message}`);
@@ -101,12 +100,12 @@ async function main() {
 
     if (!bug)                         fail('no se encontró el registro tipo=bug');
     else if (bug.mensaje !== mensajeBug) fail(`mensaje bug incorrecto: "${bug.mensaje}"`);
-    else if (bug.creado_por !== usuario.github_login) fail(`creado_por incorrecto: "${bug.creado_por}"`);
-    else                              pass(`bug guardado — mensaje="${bug.mensaje}" creado_por="${bug.creado_por}"`);
+    else if (bug.creado_por !== usuario.id) fail(`creado_por incorrecto: "${bug.creado_por}"`);
+    else                              pass(`bug guardado — mensaje="${bug.mensaje}" creado_por=${bug.creado_por.slice(0,8)}...`);
 
     if (!sug)                         fail('no se encontró el registro tipo=sugerencia');
     else if (sug.mensaje !== mensajeSug) fail(`mensaje sugerencia incorrecto: "${sug.mensaje}"`);
-    else if (sug.creado_por !== usuario.github_login) fail(`creado_por incorrecto: "${sug.creado_por}"`);
+    else if (sug.creado_por !== usuario.id) fail(`creado_por incorrecto: "${sug.creado_por}"`);
     else                              pass(`sugerencia guardada — mensaje="${sug.mensaje}"`);
   }
 

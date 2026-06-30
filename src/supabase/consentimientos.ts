@@ -70,15 +70,4 @@ export async function registrarConsentimiento(
   return consentimiento;
 }
 
-/** Verifica si el usuario tiene consentimiento activo en Supabase. */
-export async function tieneConsentimientoActivo(
-  usuario_id: string,
-): Promise<boolean> {
-  const { data, error } = await getSupabase()
-    .from("usuarios")
-    .select("consentimiento_activo")
-    .eq("id", usuario_id)
-    .maybeSingle();
-  if (error) { throw error; }
-  return (data as { consentimiento_activo: boolean } | null)?.consentimiento_activo ?? false;
-}
+

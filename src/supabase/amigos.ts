@@ -1,5 +1,6 @@
 import { getSupabase } from "./client";
-import { Amigo } from "../types";
+import { Amigo, Usuario } from "../types";
+import { obtenerUsuario } from "./usuarios";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function esUuidValido(id: string): boolean {
@@ -102,4 +103,13 @@ export async function obtenerAmigos(usuario_id: string): Promise<Amigo[]> {
     throw error;
   }
   return (data ?? []) as Amigo[];
+}
+
+/** Lista los amigos confirmados de un usuario con su perfil completo. */
+export async function obtenerAmigosConPerfil(
+  usuario_id: string,
+): Promise<Usuario[]> {
+  const amigos = await obtenerAmigos(usuario_id);
+  const perfiles = await Promise.all(amigos.map((a) => obtenerUsuario(a.amigo_id)));
+  return perfiles.filter((u): u is Usuario => u !== null);
 }

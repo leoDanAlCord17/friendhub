@@ -248,6 +248,8 @@
   "chat.friend_request":    "  @{0} wants to be your friend.",
   "chat.friend_confirm":    "  /tp add → confirm friendship",
   "chat.stack_hint":        "  type /tp stack to see compatibility.",
+  "chat.connection_error": "  ⚠ chat connection interrupted.",
+  "chat.reconnecting": "  reconnecting...",
   "chat.friends_confirmed": "  ✓ you and @{0} are now friends on TermPals.",
   "chat.friends_now":       "  you can keep talking or type /tp leave to close.",
   "banner.tagline_full":    "made for devs, by devs",

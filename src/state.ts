@@ -1,7 +1,6 @@
 import { Invitacion, Proyecto, Usuario } from "./types";
 import { obtenerProyectoActivo } from "./supabase/proyectos";
-import { obtenerAmigos } from "./supabase/amigos";
-import { obtenerUsuario } from "./supabase/usuarios";
+import { obtenerAmigosConPerfil } from "./supabase/amigos";
 
 /** Match propuesto al usuario (resultado de /tp search). */
 export interface MatchActual {
@@ -172,14 +171,10 @@ export function getConsentimientoPendiente(): {
  * proyecto activo y amigos (resueltos a sus usuarios).
  */
 export async function cargarSesion(usuario: Usuario): Promise<void> {
-  const [proyecto, amigos] = await Promise.all([
+  const [proyecto, amigosConPerfil] = await Promise.all([
     obtenerProyectoActivo(usuario.id),
-    obtenerAmigos(usuario.id),
+    obtenerAmigosConPerfil(usuario.id),
   ]);
   setProyectoActual(proyecto);
-
-  const usuarios = await Promise.all(
-    amigos.map((a) => obtenerUsuario(a.amigo_id)),
-  );
-  setAmigosCache(usuarios.filter((u): u is Usuario => u !== null));
+  setAmigosCache(amigosConPerfil);
 }

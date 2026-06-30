@@ -5,6 +5,7 @@ import {
   ResultadoComando,
   Proyecto,
   Usuario,
+  Conversacion,
   IPanel,
 } from "../types";
 import { t, idioma } from "../i18n";
@@ -28,6 +29,7 @@ import {
   setEsperandoRespuestaPro,
   getEsperandoConfirmacionDelete,
   setEsperandoConfirmacionDelete,
+  setConsentimientoPendiente,
 } from "../state";
 import { detectarWorkspace, obtenerProyectoActivo, crearOActualizarProyecto } from "../supabase/proyectos";
 import {
@@ -39,7 +41,7 @@ import {
   obtenerUsuarioPorGithubId,
   verificarYConsumirBusqueda,
 } from "../supabase/usuarios";
-import { obtenerAmigos, proponerAmistad, confirmarAmistad, existeSolicitudPendiente } from "../supabase/amigos";
+import { obtenerAmigos, obtenerAmigosConPerfil, proponerAmistad, confirmarAmistad, existeSolicitudPendiente } from "../supabase/amigos";
 import {
   obtenerConversacionActiva,
   cerrarConversacion,
@@ -51,7 +53,7 @@ import {
   obtenerInvitacionPendienteEntre,
 } from "../supabase/invitaciones";
 import { calcularCompatibilidad } from "../compatibility/score";
-import { escucharInvitaciones, iniciarChat, enviarMensaje, enviarMensajeSistema } from "../websocket/chat";
+import { cerrarTodas, escucharInvitaciones, iniciarChat, enviarMensaje, enviarMensajeSistema } from "../websocket/chat";
 import { crearFeedback } from "../supabase/feedback";
 import { eliminarToken } from "../auth/github";
 import { eliminarCuenta } from "../supabase/usuarios";
@@ -216,15 +218,11 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
 
     let amigos = getAmigosCache();
     if (amigos.length === 0) {
-      const relaciones = await conSpinner(
+      amigos = await conSpinner(
         t('friends.loading'),
-        obtenerAmigos(yo.id),
+        obtenerAmigosConPerfil(yo.id),
         2000,
       );
-      const usuarios = await Promise.all(
-        relaciones.map((a) => obtenerUsuario(a.amigo_id)),
-      );
-      amigos = usuarios.filter((u): u is Usuario => u !== null);
       setAmigosCache(amigos);
     }
     if (amigos.length === 0) {
@@ -257,11 +255,8 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       return t('invite.usage');
     }
 
-    const amigos = await obtenerAmigos(yo.id);
-    const usuarios = await Promise.all(
-      amigos.map((a) => obtenerUsuario(a.amigo_id)),
-    );
-    const amigo = usuarios.find((u) => u?.github_login === username) ?? null;
+    const usuarios = await obtenerAmigosConPerfil(yo.id);
+    const amigo = usuarios.find((u) => u.github_login === username) ?? null;
     if (!amigo) {
       return t('invite.not_friend', username);
     }
@@ -375,12 +370,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     if (typeof yo === "string") {
       return yo;
     }
-    const conv = await obtenerConversacionActiva(yo.id);
-    if (!conv) {
-      return t('add.no_conv');
-    }
-    const otroId = conv.usuario_a === yo.id ? conv.usuario_b : conv.usuario_a;
-    const otro = await obtenerUsuario(otroId);
+    const convData = await obtenerConvActiva(yo);
+    if (typeof convData === "string") { return convData; }
+    const { conv, otroId, otro } = convData;
     const otroUsername = otro?.github_login ?? otroId;
 
     const yaPropuso = await existeSolicitudPendiente(otroId, yo.id);
@@ -413,10 +405,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     if (typeof yo === "string") {
       return yo;
     }
-    const conv = await obtenerConversacionActiva(yo.id);
-    if (!conv) {
-      return t('leave.no_conv');
-    }
+    const convData = await obtenerConvActiva(yo);
+    if (typeof convData === "string") { return convData; }
+    const { conv } = convData;
     await enviarMensajeSistema(conv.id, {
       tipo: "conversacion_cerrada",
       de_usuario_id: yo.id,
@@ -452,11 +443,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       return nuevoValor ? t('readme.public') : t('readme.private');
     }
 
-    const conv = await obtenerConversacionActiva(yo.id);
-    if (!conv) {
-      return t('readme.no_match_conv');
-    }
-    const otroId = conv.usuario_a === yo.id ? conv.usuario_b : conv.usuario_a;
+    const convData = await obtenerConvActiva(yo);
+    if (typeof convData === "string") { return convData; }
+    const { otroId } = convData;
     const proyecto = await obtenerProyectoActivo(otroId);
     if (!proyecto?.readme) {
       return t('readme.no_readme_conv');
@@ -498,11 +487,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     if (typeof yo === "string") {
       return yo;
     }
-    const conv = await obtenerConversacionActiva(yo.id);
-    if (!conv) {
-      return t('leave.no_conv');
-    }
-    const otroId = conv.usuario_a === yo.id ? conv.usuario_b : conv.usuario_a;
+    const convData = await obtenerConvActiva(yo);
+    if (typeof convData === "string") { return convData; }
+    const { otroId } = convData;
     const [mio, suyo] = await conSpinner(
       t('stack.calculating'),
       Promise.all([
@@ -666,7 +653,7 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     return t('feedback.suggestion_success');
   },
 
-  /** /tp logout — cierra la sesión, elimina el token y limpia el flag de consentimiento. */
+  /** /tp logout — cierra la sesión, elimina el token y resetea todo el estado en memoria. */
   logout: async () => {
     const yo = getUsuarioActual();
     if (!yo) {
@@ -677,6 +664,16 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
       await _ctx.globalState.update("termpals.consent.shown", false);
     }
     setUsuarioActual(null);
+    setMatchActual(null);
+    setInvitacionPendiente(null);
+    setProyectoActual(null);
+    setAmigosCache([]);
+    setOnboardingPaso(null);
+    setOnboardingDatos({});
+    setEsperandoRespuestaPro(false);
+    setEsperandoConfirmacionDelete(false);
+    setConsentimientoPendiente(null);
+    cerrarTodas();
     return t('logout.success');
   },
 
@@ -927,6 +924,18 @@ function requiereUsuario(): Usuario | string {
     return t('error.no_session');
   }
   return yo;
+}
+
+async function obtenerConvActiva(yo: Usuario): Promise<{
+  conv: Conversacion;
+  otroId: string;
+  otro: Usuario | null;
+} | string> {
+  const conv = await obtenerConversacionActiva(yo.id);
+  if (!conv) { return t('leave.no_conv'); }
+  const otroId = conv.usuario_a === yo.id ? conv.usuario_b : conv.usuario_a;
+  const otro = await obtenerUsuario(otroId);
+  return { conv, otroId, otro };
 }
 
 /** Recarga el usuario desde Supabase y sincroniza el state si cambió. */
