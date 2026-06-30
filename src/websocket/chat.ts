@@ -3,7 +3,7 @@ import { getSupabase } from "../supabase/client";
 import { Invitacion, Mensaje } from "../types";
 import { obtenerUsuario } from "../supabase/usuarios";
 import { setMatchActual, setInvitacionPendiente, getUsuarioActual, setUsuarioActual, getAmigosCache } from "../state";
-import { emitir } from "../output";
+import { emitir, notificarSiNoVisible } from "../output";
 import { t } from "../i18n";
 
 /**
@@ -90,6 +90,7 @@ function impresorMensajes(miId: string, otroUsername: string): ManejadorMensaje 
   return (m) => {
     const quien = m.remitente_id === miId ? t('chat.you') : `@${otroUsername}`;
     emitir(`${quien}: ${m.contenido}`);
+    notificarSiNoVisible(t('notif.new_message', quien));
   };
 }
 
@@ -140,6 +141,7 @@ function manejarSistema(
       t('chat.friend_request', msg.de_username),
       t('chat.friend_confirm'),
     ].join("\n"));
+    notificarSiNoVisible(t('notif.friend_request', msg.de_username));
   } else if (msg.tipo === "amistad_confirmada") {
     emitir(t('chat.system_separator'));
     emitir([
@@ -153,6 +155,7 @@ function manejarSistema(
       t('chat.no_more_messages'),
       t('chat.reinvite', msg.de_username),
     ].join("\n"));
+    notificarSiNoVisible(t('notif.conv_closed', otroUsername), true);
     const yo = getUsuarioActual();
     if (yo) {
       yo.conversacion_activa_id = null;
@@ -214,6 +217,7 @@ export function escucharInvitaciones(
           }
           iniciarChat(convId, miId, otroUsername);
           emitir(t('connect.accepted', otroUsername));
+          notificarSiNoVisible(t('notif.invitation_accepted', otroUsername));
           emitir(t('connect.started'));
           emitir(t('chat.stack_hint'));
           cerrarCanalInvitacion(clave);
@@ -297,6 +301,7 @@ export function escucharInvitacionesEntrantes(
             ].join("\n"),
           );
         }
+        notificarSiNoVisible(t('notif.new_invitation', username));
       },
     )
     .subscribe();

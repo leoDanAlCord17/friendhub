@@ -8,6 +8,7 @@ import { hayCredenciales } from "./supabase/client";
 import { iniciarLoginGithub, manejarCallback } from "./auth/github";
 import { getOnboardingPaso } from "./state";
 import { configurarContextComandos, setProveedorPanel } from "./commands";
+import { setConsultaVisible } from "./output";
 import { inicializarI18n, t } from "./i18n";
 
 /**
@@ -21,6 +22,7 @@ export function activate(context: vscode.ExtensionContext): void {
   configurarContextComandos(context);
   const proveedor = new TermPalsPanel(context.extensionUri, context);
   setProveedorPanel(proveedor);
+  setConsultaVisible(() => proveedor.esVisible);
 
   if (!hayCredenciales()) {
     void vscode.window.showWarningMessage(

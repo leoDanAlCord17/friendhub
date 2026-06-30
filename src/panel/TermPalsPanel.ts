@@ -19,6 +19,11 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
 
   private view?: vscode.WebviewView;
   private loginIntentado = false;
+  private panelVisible = true;
+
+  public get esVisible(): boolean {
+    return this.panelVisible;
+  }
 
   private spinnerInterval: ReturnType<typeof setInterval> | null = null;
   private readonly SPINNER_FRAMES = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
@@ -162,6 +167,10 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
   /** Llamado por VS Code cuando la vista del panel se hace visible. */
   public resolveWebviewView(webviewView: vscode.WebviewView): void {
     this.view = webviewView;
+    this.panelVisible = webviewView.visible;
+    webviewView.onDidChangeVisibility(() => {
+      this.panelVisible = webviewView.visible;
+    });
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [this.extensionUri],
