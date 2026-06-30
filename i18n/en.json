@@ -170,6 +170,7 @@
   "error.network": "  no connection. check your internet and try again.",
   "error.generic": "  something went wrong: {0}",
   "error.generic_safe": "  something went wrong. try again or use /tp bug to report it.",
+  "error.cooldown": "  wait {0}s before trying again.",
   "error.timeout": "  no response from server. please try again.",
   "spinner.working": "processing...",
 

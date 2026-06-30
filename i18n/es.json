@@ -170,6 +170,7 @@
   "error.network": "  sin conexión. verificá tu internet e intentá de nuevo.",
   "error.generic": "  algo salió mal: {0}",
   "error.generic_safe": "  algo salió mal. intentá de nuevo o usá /tp bug para reportarlo.",
+  "error.cooldown": "  esperá {0}s antes de intentar de nuevo.",
   "error.timeout": "  sin respuesta del servidor. intentá de nuevo.",
   "spinner.working": "procesando...",
 

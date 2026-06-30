@@ -178,3 +178,26 @@ export async function cargarSesion(usuario: Usuario): Promise<void> {
   setProyectoActual(proyecto);
   setAmigosCache(amigosConPerfil);
 }
+
+// ---------------------------------------------------------------------------
+// Rate limiting por comando
+// ---------------------------------------------------------------------------
+
+const ultimoUso: Map<string, number> = new Map();
+
+export function puedeEjecutar(comando: string, cooldownMs: number): boolean {
+  const ahora = Date.now();
+  const ultima = ultimoUso.get(comando) ?? 0;
+  if (ahora - ultima < cooldownMs) {
+    return false;
+  }
+  ultimoUso.set(comando, ahora);
+  return true;
+}
+
+export function tiempoRestante(comando: string, cooldownMs: number): number {
+  const ahora = Date.now();
+  const ultima = ultimoUso.get(comando) ?? 0;
+  const restante = cooldownMs - (ahora - ultima);
+  return Math.max(0, Math.ceil(restante / 1000));
+}

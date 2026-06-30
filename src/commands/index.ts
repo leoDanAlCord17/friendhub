@@ -30,6 +30,8 @@ import {
   getEsperandoConfirmacionDelete,
   setEsperandoConfirmacionDelete,
   setConsentimientoPendiente,
+  puedeEjecutar,
+  tiempoRestante,
 } from "../state";
 import { detectarWorkspace, obtenerProyectoActivo, crearOActualizarProyecto } from "../supabase/proyectos";
 import {
@@ -250,6 +252,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     if (typeof yo === "string") {
       return yo;
     }
+    if (!puedeEjecutar('invite', 3000)) {
+      return t('error.cooldown', tiempoRestante('invite', 3000));
+    }
     const username = (args[0] ?? "").replace(/^@/, "");
     if (!username) {
       return t('invite.usage');
@@ -369,6 +374,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
       return yo;
+    }
+    if (!puedeEjecutar('add', 2000)) {
+      return t('error.cooldown', tiempoRestante('add', 2000));
     }
     const convData = await obtenerConvActiva(yo);
     if (typeof convData === "string") { return convData; }
@@ -533,6 +541,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     if (typeof base === "string") {
       return base;
     }
+    if (!puedeEjecutar('connect', 3000)) {
+      return t('error.cooldown', tiempoRestante('connect', 3000));
+    }
     const match = getMatchActual();
     if (!match) {
       return t('connect.no_match');
@@ -625,6 +636,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     if (typeof yo === "string") {
       return yo;
     }
+    if (!puedeEjecutar('bug', 5000)) {
+      return t('error.cooldown', tiempoRestante('bug', 5000));
+    }
     const mensaje = args.join(" ").trim();
     if (!mensaje) {
       return t('feedback.bug_usage');
@@ -641,6 +655,9 @@ const handlers: Record<ComandoTp, ComandoHandler> = {
     const yo = requiereUsuario();
     if (typeof yo === "string") {
       return yo;
+    }
+    if (!puedeEjecutar('suggest', 5000)) {
+      return t('error.cooldown', tiempoRestante('suggest', 5000));
     }
     const mensaje = args.join(" ").trim();
     if (!mensaje) {
