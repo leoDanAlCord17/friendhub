@@ -3,6 +3,9 @@
   "displayName": "TermPals",
   "description": "Conecta con otros desarrolladores desde el panel inferior de VS Code.",
   "version": "0.0.1",
+  "engines": {
+    "node": "24.x"
+  },
   "publisher": "leodanielalvarez",
   "license": "MIT",
   "repository": {
