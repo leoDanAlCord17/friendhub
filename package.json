@@ -1,23 +1,31 @@
 {
   "name": "termpals",
   "displayName": "TermPals",
-  "description": "Conecta con otros desarrolladores desde el panel inferior de VS Code.",
+  "description": "Connect with other developers directly from VS Code. Match by tech stack, chat in real time, and find your next collaborator without leaving your editor.",
   "version": "0.0.1",
   "engines": {
+    "vscode": "^1.80.0",
     "node": "24.x"
   },
+  "icon": "icon.png",
   "publisher": "leodanielalvarez",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/leoDanAlCord17/termpals.git"
   },
-  "engines": {
-    "vscode": "^1.80.0",
-    "node": "20.x"
-  },
   "categories": [
     "Other"
+  ],
+  "keywords": [
+    "developer",
+    "networking",
+    "social",
+    "collaboration",
+    "chat",
+    "match",
+    "github",
+    "pair programming"
   ],
   "main": "./out/extension.js",
   "activationEvents": [
@@ -56,31 +64,6 @@
           "type": "webview"
         }
       ]
-    },
-    "configuration": {
-      "title": "TermPals",
-      "properties": {
-        "termpals.supabaseUrl": {
-          "type": "string",
-          "default": "",
-          "description": "URL de tu proyecto Supabase"
-        },
-        "termpals.supabaseAnonKey": {
-          "type": "string",
-          "default": "",
-          "description": "Anon key de tu proyecto Supabase"
-        },
-        "termpals.githubClientId": {
-          "type": "string",
-          "default": "",
-          "description": "Client ID de tu GitHub OAuth App"
-        },
-        "termpals.githubClientSecret": {
-          "type": "string",
-          "default": "",
-          "description": "Client Secret de tu GitHub OAuth App"
-        }
-      }
     }
   },
   "scripts": {

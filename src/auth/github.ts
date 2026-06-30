@@ -83,25 +83,13 @@ interface PerfilGithub {
   email: string | null;
 }
 
-/**
- * El client secret ya NO se usa en el cliente: el intercambio code → token lo
- * hace el endpoint de Vercel. Solo necesitamos el Client ID para construir la
- * URL de autorización.
- */
-function leerClientId(): string {
-  const config = vscode.workspace.getConfiguration("termpals");
-  const clientId = config.get<string>("githubClientId", "").trim();
-  if (!clientId) {
-    throw new Error("Configura termpals.githubClientId en Settings.");
-  }
-  return clientId;
-}
+const GITHUB_CLIENT_ID = 'Ov23liSbRYaNMxE5NIbY';
 
 /** Inicia el login con GitHub y devuelve el usuario autenticado. */
 export async function iniciarLoginGithub(
   context: vscode.ExtensionContext,
 ): Promise<Usuario> {
-  const clientId = leerClientId();
+  const clientId = GITHUB_CLIENT_ID;
 
   // State aleatorio anti-CSRF, guardado para que el UriHandler lo valide.
   const state = crypto.randomUUID();

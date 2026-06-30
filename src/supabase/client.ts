@@ -1,34 +1,14 @@
-import * as vscode from "vscode";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-/**
- * Cliente Supabase singleton de TermPals.
- *
- * Las credenciales se leen de la configuración de VS Code
- * (`termpals.supabaseUrl` / `termpals.supabaseAnonKey`) para que el usuario
- * las defina en Settings sin quemarlas en el bundle de la extensión.
- */
+const SUPABASE_URL = 'https://xjbqfkcjhzedzuphaewx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhqYnFma2NqaHplZHp1cGhhZXd4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNTM4NTEsImV4cCI6MjA5NjkyOTg1MX0.pLYKDrBpxgyATH6mQQMviFPIxbN2CgMvPykSescEpmQ';
 
 let cliente: SupabaseClient | null = null;
-
-function leerCredenciales(): { url: string; anonKey: string } {
-  const config = vscode.workspace.getConfiguration("termpals");
-  const url = config.get<string>("supabaseUrl", "").trim();
-  const anonKey = config.get<string>("supabaseAnonKey", "").trim();
-  return { url, anonKey };
-}
 
 /** Devuelve el cliente Supabase, creándolo la primera vez. */
 export function getSupabase(): SupabaseClient {
   if (!cliente) {
-    const { url, anonKey } = leerCredenciales();
-    if (!url || !anonKey) {
-      throw new Error(
-        "Faltan credenciales de Supabase. Configúralas en Settings: " +
-          "termpals.supabaseUrl y termpals.supabaseAnonKey.",
-      );
-    }
-    cliente = createClient(url, anonKey, {
+    cliente = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession: false },
       realtime: { params: { eventsPerSecond: 5 } },
     });
@@ -36,13 +16,12 @@ export function getSupabase(): SupabaseClient {
   return cliente;
 }
 
-/** Indica si las credenciales están configuradas. */
+/** Siempre true — las credenciales están hardcodeadas en el bundle. */
 export function hayCredenciales(): boolean {
-  const { url, anonKey } = leerCredenciales();
-  return Boolean(url && anonKey);
+  return true;
 }
 
-/** Reinicia el cliente (p. ej. al cambiar credenciales en Settings). */
+/** Reinicia el cliente (usado en tests). */
 export function reiniciarSupabase(): void {
   cliente = null;
 }

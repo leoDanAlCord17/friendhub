@@ -4,7 +4,6 @@ import {
   cerrarTodas,
   escucharInvitacionesEntrantes,
 } from "./websocket/chat";
-import { hayCredenciales } from "./supabase/client";
 import { iniciarLoginGithub, manejarCallback } from "./auth/github";
 import { getOnboardingPaso } from "./state";
 import { configurarContextComandos, setProveedorPanel } from "./commands";
@@ -23,12 +22,6 @@ export function activate(context: vscode.ExtensionContext): void {
   const proveedor = new TermPalsPanel(context.extensionUri, context);
   setProveedorPanel(proveedor);
   setConsultaVisible(() => proveedor.esVisible);
-
-  if (!hayCredenciales()) {
-    void vscode.window.showWarningMessage(
-      "TermPals: configura termpals.supabaseUrl y termpals.supabaseAnonKey en Settings para empezar.",
-    );
-  }
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
