@@ -22,7 +22,7 @@ export class TermPalsPanel implements vscode.WebviewViewProvider {
   private panelVisible = true;
 
   public get esVisible(): boolean {
-    return this.panelVisible;
+    return this.panelVisible && vscode.window.state.focused;
   }
 
   private spinnerInterval: ReturnType<typeof setInterval> | null = null;
